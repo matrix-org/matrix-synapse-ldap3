@@ -3,3 +3,4 @@ include *.py
 include LICENSE
 include tox.ini
 include requirements.txt
+recursive-include tests *.py
