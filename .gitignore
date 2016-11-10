@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 build/
 dist/
+_trial_temp/
