@@ -1,0 +1,11 @@
+language: python
+env:
+- TOXENV=packaging
+- TOXENV=pep8
+- TOXENV=py27
+
+install:
+- pip install tox
+
+script:
+- tox
