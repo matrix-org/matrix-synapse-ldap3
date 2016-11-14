@@ -46,16 +46,12 @@ userPassword: eekretsay
 """
 
 
-class _Tree(object):
-    def __init__(self):
-        global LDIF
-        self.f = StringIO(LDIF)
-        d = fromLDIFFile(self.f)
-        d.addCallback(self.ldifRead)
-
-    def ldifRead(self, result):
-        self.f.close()
-        self.db = result
+@defer.inlineCallbacks
+def _create_db():
+    f = StringIO(LDIF)
+    db = yield fromLDIFFile(f)
+    f.close()
+    defer.returnValue(db)
 
 
 class _LDAPServerFactory(ServerFactory):
@@ -104,8 +100,8 @@ registerAdapter(
 def create_ldap_server():
     "Returns a context manager that represents the LDAP server."
 
-    tree = _Tree()
-    factory = _LDAPServerFactory(tree.db)
+    db = yield _create_db()
+    factory = _LDAPServerFactory(db)
     factory.debug = True
 
     # We just pick an arbitrary port to listen on.

@@ -84,7 +84,7 @@ class LdapAuthProvider(object):
         localpart = user_id.split(":", 1)[0][1:]
 
         try:
-            server = ldap3.Server(self.ldap_uri)
+            server = ldap3.Server(self.ldap_uri, get_info=None)
             logger.debug(
                 "Attempting LDAP connection with %s",
                 self.ldap_uri
@@ -267,6 +267,7 @@ class LdapAuthProvider(object):
                 ldap3.Connection,
                 server, bind_dn, password,
                 authentication=LDAP_AUTH_SIMPLE,
+                read_only=True,
             )
             logger.debug(
                 "Established LDAP connection in simple bind mode: %s",
