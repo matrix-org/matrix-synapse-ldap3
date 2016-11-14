@@ -2,7 +2,9 @@ language: python
 env:
 - TOXENV=packaging
 - TOXENV=pep8
-- TOXENV=py27
+- TOXENV=py27-ldap0
+- TOXENV=py27-ldap1
+- TOXENV=py27-ldap2
 
 install:
 - pip install tox
