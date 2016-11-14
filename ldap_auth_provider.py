@@ -28,6 +28,12 @@ __version__ = "0.1.0"
 try:
     import ldap3
     import ldap3.core.exceptions
+
+    # ldap3 v2 changed ldap3.AUTH_SIMPLE -> ldap3.SIMPLE
+    try:
+        LDAP_AUTH_SIMPLE = ldap3.AUTH_SIMPLE
+    except AttributeError:
+        LDAP_AUTH_SIMPLE = ldap3.SIMPLE
 except ImportError:
     ldap3 = None
     pass
@@ -260,7 +266,7 @@ class LdapAuthProvider(object):
             conn = yield threads.deferToThread(
                 ldap3.Connection,
                 server, bind_dn, password,
-                authentication=ldap3.AUTH_SIMPLE
+                authentication=LDAP_AUTH_SIMPLE,
             )
             logger.debug(
                 "Established LDAP connection in simple bind mode: %s",
