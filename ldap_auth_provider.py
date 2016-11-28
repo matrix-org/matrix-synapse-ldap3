@@ -57,7 +57,8 @@ class LdapAuthProvider(object):
 
         if not ldap3:
             raise RuntimeError(
-                'Missing ldap3 library. This is required for LDAP Authentication.'
+                'Missing ldap3 library. '
+                'This is required for LDAP Authentication.'
             )
 
         self.ldap_mode = config.mode
@@ -91,11 +92,17 @@ class LdapAuthProvider(object):
             )
 
             if self.ldap_mode == LDAPMode.SIMPLE:
+                bind_dn = "{prop}={value},{base}".format(
+                    prop=self.ldap_attributes['uid'],
+                    value=localpart,
+                    base=self.ldap_base
+                )
                 result, conn = yield self._ldap_simple_bind(
-                    server=server, localpart=localpart, password=password
+                    server=server, bind_dn=bind_dn, password=password
                 )
                 logger.debug(
-                    'LDAP authentication method simple bind returned: %s (conn: %s)',
+                    'LDAP authentication method simple bind returned: '
+                    '%s (conn: %s)',
                     result,
                     conn
                 )
@@ -106,7 +113,8 @@ class LdapAuthProvider(object):
                     server=server, localpart=localpart, password=password
                 )
                 logger.debug(
-                    'LDAP auth method authenticated search returned: %s (conn: %s)',
+                    'LDAP auth method authenticated search returned: '
+                    '%s (conn: %s)',
                     result,
                     conn
                 )
@@ -125,8 +133,9 @@ class LdapAuthProvider(object):
                     conn
                 )
             except NameError:
-                logger.warn(
-                    "Authentication method yielded no LDAP connection, aborting!"
+                logger.warning(
+                    "Authentication method yielded no LDAP connection, "
+                    "aborting!"
                 )
                 defer.returnValue(False)
 
@@ -174,22 +183,21 @@ class LdapAuthProvider(object):
                         yield self.account_handler.register(localpart=localpart)
                     )
 
-                    # TODO: bind email, set displayname with data from ldap directory
+                    # TODO: bind email, set displayname with data from
+                    #       ldap directory
 
                     logger.info(
-                        "Registration based on LDAP data was successful: %d: %s (%s, %)",
-                        user_id,
-                        localpart,
-                        name,
-                        mail
+                        "Registration based on LDAP data was successful: "
+                        "%d: %s (%s, %)",
+                        user_id, localpart, name, mail
                     )
 
                     defer.returnValue(True)
                 else:
                     if len(conn.response) == 0:
-                        logger.warn("LDAP registration failed, no result.")
+                        logger.warning("LDAP registration failed, no result.")
                     else:
-                        logger.warn(
+                        logger.warning(
                             "LDAP registration failed, too many results (%s)",
                             len(conn.response)
                         )
@@ -199,7 +207,7 @@ class LdapAuthProvider(object):
             defer.returnValue(False)
 
         except ldap3.core.exceptions.LDAPException as e:
-            logger.warn("Error during ldap authentication: %s", e)
+            logger.warning("Error during ldap authentication: %s", e)
             defer.returnValue(False)
 
     @staticmethod
@@ -246,7 +254,7 @@ class LdapAuthProvider(object):
         return ldap_config
 
     @defer.inlineCallbacks
-    def _ldap_simple_bind(self, server, localpart, password):
+    def _ldap_simple_bind(self, server, bind_dn, password):
         """ Attempt a simple bind with the credentials
             given by the user against the LDAP server.
 
@@ -258,11 +266,6 @@ class LdapAuthProvider(object):
 
         try:
             # bind with the the local users ldap credentials
-            bind_dn = "{prop}={value},{base}".format(
-                prop=self.ldap_attributes['uid'],
-                value=localpart,
-                base=self.ldap_base
-            )
             conn = yield threads.deferToThread(
                 ldap3.Connection,
                 server, bind_dn, password,
@@ -277,7 +280,8 @@ class LdapAuthProvider(object):
             if self.ldap_start_tls:
                 yield threads.deferToThread(conn.start_tls)
                 logger.debug(
-                    "Upgraded LDAP connection in simple bind mode through StartTLS: %s",
+                    "Upgraded LDAP connection in simple bind mode through "
+                    "StartTLS: %s",
                     conn
                 )
 
@@ -289,13 +293,13 @@ class LdapAuthProvider(object):
             # BAD: bind failed
             logger.info(
                 "Binding against LDAP failed for '%s' failed: %s",
-                localpart, conn.result['description']
+                bind_dn, conn.result['description']
             )
             yield threads.deferToThread(conn.unbind)
             defer.returnValue((False, None))
 
         except ldap3.core.exceptions.LDAPException as e:
-            logger.warn("Error during LDAP authentication: %s", e)
+            logger.warning("Error during LDAP authentication: %s", e)
             defer.returnValue((False, None))
 
     def _ldap_authenticated_search(self, server, localpart, password):
@@ -329,12 +333,13 @@ class LdapAuthProvider(object):
             if self.ldap_start_tls:
                 yield threads.deferToThread(conn.start_tls)
                 logger.debug(
-                    "Upgraded LDAP connection in search mode through StartTLS: %s",
+                    "Upgraded LDAP connection in search mode through "
+                    "StartTLS: %s",
                     conn
                 )
 
             if not (yield threads.deferToThread(conn.bind)):
-                logger.warn(
+                logger.warning(
                     "Binding against LDAP with `bind_dn` failed: %s",
                     conn.result['description']
                 )
@@ -371,7 +376,11 @@ class LdapAuthProvider(object):
                 # Note: do not use rebind(), for some reason it did not verify
                 #       the password for me!
                 yield threads.deferToThread(conn.unbind)
-                defer.returnValue(self._ldap_simple_bind(server, localpart, password))
+                defer.returnValue(
+                    self._ldap_simple_bind(
+                        server=server, bind_dn=user_dn, passowrd=password
+                    )
+                )
             else:
                 # BAD: found 0 or > 1 results, abort!
                 if len(conn.response) == 0:
@@ -388,7 +397,7 @@ class LdapAuthProvider(object):
                 defer.returnValue(False, None)
 
         except ldap3.core.exceptions.LDAPException as e:
-            logger.warn("Error during LDAP authentication: %s", e)
+            logger.warning("Error during LDAP authentication: %s", e)
             defer.returnValue(False, None)
 
 
