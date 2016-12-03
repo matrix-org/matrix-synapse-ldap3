@@ -173,8 +173,15 @@ class LdapAuthProvider(object):
                     ]
                 )
 
-                if len(conn.response) == 1:
-                    attrs = conn.response[0]['attributes']
+                responses = [
+                    response
+                    for response
+                    in conn.response
+                    if response['type'] == 'searchResEntry'
+                ]
+
+                if len(responses) == 1:
+                    attrs = responses[0]['attributes']
                     name = attrs[self.ldap_attributes['name']][0]
                     try:
                         mail = attrs[self.ldap_attributes['mail']][0]
@@ -197,12 +204,12 @@ class LdapAuthProvider(object):
 
                     defer.returnValue(True)
                 else:
-                    if len(conn.response) == 0:
+                    if len(responses) == 0:
                         logger.warning("LDAP registration failed, no result.")
                     else:
                         logger.warning(
                             "LDAP registration failed, too many results (%s)",
-                            len(conn.response)
+                            len(responses)
                         )
 
                     defer.returnValue(False)
@@ -373,9 +380,16 @@ class LdapAuthProvider(object):
                 search_filter=query
             )
 
-            if len(conn.response) == 1:
+            responses = [
+                response
+                for response
+                in conn.response
+                if response['type'] == 'searchResEntry'
+            ]
+
+            if len(responses) == 1:
                 # GOOD: found exactly one result
-                user_dn = conn.response[0]['dn']
+                user_dn = responses[0]['dn']
                 logger.debug('LDAP search found dn: %s', user_dn)
 
                 # unbind and simple bind with user_dn to verify the password
@@ -389,7 +403,7 @@ class LdapAuthProvider(object):
                 defer.returnValue(result)
             else:
                 # BAD: found 0 or > 1 results, abort!
-                if len(conn.response) == 0:
+                if len(responses) == 0:
                     logger.info(
                         "LDAP search returned no results for '%s'",
                         localpart
@@ -397,7 +411,7 @@ class LdapAuthProvider(object):
                 else:
                     logger.info(
                         "LDAP search returned too many (%s) results for '%s'",
-                        len(conn.response), localpart
+                        len(responses), localpart
                     )
                 yield threads.deferToThread(conn.unbind)
                 defer.returnValue((False, None))
