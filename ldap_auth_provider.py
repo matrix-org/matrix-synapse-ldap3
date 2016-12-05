@@ -302,6 +302,7 @@ class LdapAuthProvider(object):
             logger.warning("Error during LDAP authentication: %s", e)
             defer.returnValue((False, None))
 
+    @defer.inlineCallbacks
     def _ldap_authenticated_search(self, server, localpart, password):
         """ Attempt to login with the preconfigured bind_dn
             and then continue searching and filtering within
@@ -376,11 +377,11 @@ class LdapAuthProvider(object):
                 # Note: do not use rebind(), for some reason it did not verify
                 #       the password for me!
                 yield threads.deferToThread(conn.unbind)
-                defer.returnValue(
-                    self._ldap_simple_bind(
-                        server=server, bind_dn=user_dn, passowrd=password
-                    )
+                result = yield self._ldap_simple_bind(
+                    server=server, bind_dn=user_dn, password=password
                 )
+
+                defer.returnValue(result)
             else:
                 # BAD: found 0 or > 1 results, abort!
                 if len(conn.response) == 0:
@@ -394,11 +395,11 @@ class LdapAuthProvider(object):
                         len(conn.response), localpart
                     )
                 yield threads.deferToThread(conn.unbind)
-                defer.returnValue(False, None)
+                defer.returnValue((False, None))
 
         except ldap3.core.exceptions.LDAPException as e:
             logger.warning("Error during LDAP authentication: %s", e)
-            defer.returnValue(False, None)
+            defer.returnValue((False, None))
 
 
 def _require_keys(config, required):
