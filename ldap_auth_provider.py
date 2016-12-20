@@ -278,6 +278,7 @@ class LdapAuthProvider(object):
             )
 
             if self.ldap_start_tls:
+                yield threads.deferToThread(conn.open)
                 yield threads.deferToThread(conn.start_tls)
                 logger.debug(
                     "Upgraded LDAP connection in simple bind mode through "
@@ -332,6 +333,7 @@ class LdapAuthProvider(object):
             )
 
             if self.ldap_start_tls:
+                yield threads.deferToThread(conn.open)
                 yield threads.deferToThread(conn.start_tls)
                 logger.debug(
                     "Upgraded LDAP connection in search mode through "
