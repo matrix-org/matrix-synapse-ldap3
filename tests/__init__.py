@@ -29,19 +29,19 @@ cn: bob
 objectclass: person
 gn: bob
 mail: bob@example.org
-userPassword: secret
+userPassword: {SSHA}JMjHQf5qSsxHsPrCIisx5bghXbkU0JHKa97geQ==
 
 dn: cn=jdoe,ou=people,dc=example,dc=org
 cn: jdoe
 gn: John Doe
 objectClass: person
-userPassword: terces
+userPassword: {SSHA}6QrGxQ1jDkE6HFflgoO9FJPdkOWe9/FLFZzVMw==
 
 dn: cn=jsmith,ou=people,dc=example,dc=org
 cn: jsmith
 gn: John Smith
 objectClass: person
-userPassword: eekretsay
+userPassword: {SSHA}mtIQXzjeID+j1LdjduYB1kjaHPgup8UnK4ofgw==
 
 """
 
