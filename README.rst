@@ -3,6 +3,10 @@ Synapse LDAP Auth Provider
 
 Allows synapse to use LDAP as a password provider.
 
+Installation
+------------
+- Via deb package `python-matrix-synapse-ldap3` available in the same repo as the synapse package
+- Via python's package manager: `pip install matrix-synapse-ldap3`
 
 Usage
 -----
