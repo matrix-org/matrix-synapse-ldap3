@@ -29,3 +29,37 @@ Example synapse config:
         #bind_dn:
         #bind_password:
         #filter: "(objectClass=posixAccount)"
+
+Troubleshooting and Debugging
+-----------------------------
+
+``matrix-synapse-ldap3`` logging is included in the Synapse homeserver log
+(typically ``homeserver.log``). The LDAP plugin log level can be increased to
+``DEBUG`` for troubleshooting and debugging by making the following modifications
+to your Synapse server's logging configuration file:
+
+- Set the value for `handlers.file.level` to `DEBUG`:
+
+.. code:: yaml
+
+   handlers:
+     file:
+       # [...]
+       level: DEBUG
+
+- Add the following to the `loggers` section:
+
+.. code:: yaml
+
+   loggers:
+      # [...]
+      ldap3:
+        level: DEBUG
+      ldap_auth_provider:
+        level: DEBUG
+
+Finally, restart your Synapse server for the changes to take effect:
+
+.. code:: sh
+
+   synctl restart
