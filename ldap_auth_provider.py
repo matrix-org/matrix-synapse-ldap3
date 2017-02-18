@@ -175,8 +175,11 @@ class LdapAuthProvider(object):
 
                 if len(conn.response) == 1:
                     attrs = conn.response[0]['attributes']
-                    mail = attrs[self.ldap_attributes['mail']][0]
                     name = attrs[self.ldap_attributes['name']][0]
+                    try:
+                        mail = attrs[self.ldap_attributes['mail']][0]
+                    except KeyError:
+                        mail = None
 
                     # create account
                     user_id, access_token = (
