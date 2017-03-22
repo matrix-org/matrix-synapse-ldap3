@@ -175,7 +175,10 @@ class LdapAuthProvider(object):
 
                 if len(conn.response) == 1:
                     attrs = conn.response[0]['attributes']
-                    name = attrs[self.ldap_attributes['name']][0]
+                    try:
+                        name = attrs[self.ldap_attributes['name']][0]
+                    except KeyError:
+                        name = None
                     try:
                         mail = attrs[self.ldap_attributes['mail']][0]
                     except KeyError:
@@ -188,6 +191,7 @@ class LdapAuthProvider(object):
 
                     # TODO: bind email, set displayname with data from
                     #       ldap directory
+
 
                     logger.info(
                         "Registration based on LDAP data was successful: "
