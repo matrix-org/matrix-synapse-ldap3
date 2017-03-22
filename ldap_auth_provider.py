@@ -189,13 +189,14 @@ class LdapAuthProvider(object):
                         yield self.account_handler.register(localpart=localpart)
                     )
 
-                    # TODO: bind email, set displayname with data from
-                    #       ldap directory
+                    yield self.account_handler.hs.get_handlers().profile_handler.store.set_profile_displayname(localpart, name)
+
+                    # TODO: bind email
 
 
                     logger.info(
                         "Registration based on LDAP data was successful: "
-                        "%d: %s (%s, %)",
+                        "%s: %s (%s, %s)",
                         user_id, localpart, name, mail
                     )
 
