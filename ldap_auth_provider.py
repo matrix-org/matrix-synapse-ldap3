@@ -139,78 +139,77 @@ class LdapAuthProvider(object):
                 )
                 defer.returnValue(False)
 
-            # check if user with user_id exists
-            if (yield self.account_handler.check_user_exists(user_id)):
-                # exists, authentication complete
-                yield threads.deferToThread(conn.unbind)
-                defer.returnValue(True)
+            # Fetch user data from
+            # existing ldap connection
+            query = "({prop}={value})".format(
+                prop=self.ldap_attributes['uid'],
+                value=localpart
+            )
 
-            else:
-                # does not exist, fetch metadata for account creation from
-                # existing ldap connection
-                query = "({prop}={value})".format(
-                    prop=self.ldap_attributes['uid'],
-                    value=localpart
+            if self.ldap_mode == LDAPMode.SEARCH and self.ldap_filter:
+                query = "(&{filter}{user_filter})".format(
+                    filter=query,
+                    user_filter=self.ldap_filter
                 )
+            logger.debug(
+                "ldap search filter: %s",
+                query
+            )
 
-                if self.ldap_mode == LDAPMode.SEARCH and self.ldap_filter:
-                    query = "(&{filter}{user_filter})".format(
-                        filter=query,
-                        user_filter=self.ldap_filter
-                    )
-                logger.debug(
-                    "ldap registration filter: %s",
-                    query
-                )
+            yield threads.deferToThread(
+                conn.search,
+                search_base=self.ldap_base,
+                search_filter=query,
+                attributes=[
+                    self.ldap_attributes['name'],
+                    self.ldap_attributes['mail']
+                ]
+            )
 
-                yield threads.deferToThread(
-                    conn.search,
-                    search_base=self.ldap_base,
-                    search_filter=query,
-                    attributes=[
-                        self.ldap_attributes['name'],
-                        self.ldap_attributes['mail']
-                    ]
-                )
+            if len(conn.response) == 1:
+                attrs = conn.response[0]['attributes']
+                try:
+                    name = attrs[self.ldap_attributes['name']][0]
+                except KeyError:
+                    name = None
+                try:
+                    mail = attrs[self.ldap_attributes['mail']][0]
+                except KeyError:
+                    mail = None
 
-                if len(conn.response) == 1:
-                    attrs = conn.response[0]['attributes']
-                    try:
-                        name = attrs[self.ldap_attributes['name']][0]
-                    except KeyError:
-                        name = None
-                    try:
-                        mail = attrs[self.ldap_attributes['mail']][0]
-                    except KeyError:
-                        mail = None
 
-                    # create account
+                # TODO: bind email
+                if (yield self.account_handler.check_user_exists(user_id)):
+                    # Update user data
+                    yield self.account_handler.hs.get_handlers().profile_handler.store.set_profile_displayname(localpart, name)
+                     logger.info(
+                         "Auth based on LDAP data was successful: "
+                         "%s: %s (%s, %s)",
+                         user_id, localpart, name, mail
+                     )
+                else:
+                    # Create account
                     user_id, access_token = (
                         yield self.account_handler.register(localpart=localpart)
                     )
 
                     yield self.account_handler.hs.get_handlers().profile_handler.store.set_profile_displayname(localpart, name)
-
-                    # TODO: bind email
-
-
-                    logger.info(
-                        "Registration based on LDAP data was successful: "
-                        "%s: %s (%s, %s)",
-                        user_id, localpart, name, mail
-                    )
+                     logger.info(
+                         "Registration based on LDAP data was successful: "
+                         "%s: %s (%s, %s)",
+                         user_id, localpart, name, mail
+                     )
 
                     defer.returnValue(True)
+            else:
+                if len(conn.response) == 0:
+                    logger.warning("LDAP registration failed, no result.")
                 else:
-                    if len(conn.response) == 0:
-                        logger.warning("LDAP registration failed, no result.")
-                    else:
-                        logger.warning(
-                            "LDAP registration failed, too many results (%s)",
-                            len(conn.response)
-                        )
-
-                    defer.returnValue(False)
+                    logger.warning(
+                        "LDAP registration failed, too many results (%s)",
+                        len(conn.response)
+                    )
+                defer.returnValue(False)
 
             defer.returnValue(False)
 
