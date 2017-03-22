@@ -177,30 +177,29 @@ class LdapAuthProvider(object):
                 except KeyError:
                     mail = None
 
-
+                store = self.account_handler.hs.get_handlers().profile_handler.store
                 # TODO: bind email
                 if (yield self.account_handler.check_user_exists(user_id)):
                     # Update user data
-                    yield self.account_handler.hs.get_handlers().profile_handler.store.set_profile_displayname(localpart, name)
-                     logger.info(
-                         "Auth based on LDAP data was successful: "
-                         "%s: %s (%s, %s)",
-                         user_id, localpart, name, mail
-                     )
+                    yield store.set_profile_displayname(localpart, name)
+                    logger.info(
+                        "Auth based on LDAP data was successful: "
+                        "%s: %s (%s, %s)",
+                        user_id, localpart, name, mail
+                    )
                 else:
                     # Create account
                     user_id, access_token = (
                         yield self.account_handler.register(localpart=localpart)
                     )
 
-                    yield self.account_handler.hs.get_handlers().profile_handler.store.set_profile_displayname(localpart, name)
-                     logger.info(
-                         "Registration based on LDAP data was successful: "
-                         "%s: %s (%s, %s)",
-                         user_id, localpart, name, mail
-                     )
-
-                    defer.returnValue(True)
+                    yield store.set_profile_displayname(localpart, name)
+                    logger.info(
+                        "Registration based on LDAP data was successful: "
+                        "%s: %s (%s, %s)",
+                        user_id, localpart, name, mail
+                    )
+                defer.returnValue(True)
             else:
                 if len(conn.response) == 0:
                     logger.warning("LDAP registration failed, no result.")

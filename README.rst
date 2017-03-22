@@ -23,12 +23,15 @@ Example synapse config:
         start_tls: true
         base: "ou=users,dc=example,dc=com"
         attributes:
-           uid: "cn"
+           uid: "samaccountname"
            mail: "email"
            name: "givenName"
         #bind_dn:
         #bind_password:
         #filter: "(objectClass=posixAccount)"
+
+Do not use ``cn`` attribute as uid. It's common mistake: ``cn`` attribute not uniqe in LDAP tree in most schemas!
+It's work fine only in very simple LDAP installations without complex Organizational Units structire.
 
 Troubleshooting and Debugging
 -----------------------------
