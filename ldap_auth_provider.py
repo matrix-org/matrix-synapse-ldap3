@@ -160,10 +160,7 @@ class LdapAuthProvider(object):
                 conn.search,
                 search_base=self.ldap_base,
                 search_filter=query,
-                attributes=[
-                    self.ldap_attributes['name'],
-                    self.ldap_attributes['mail']
-                ]
+                attributes=self.ldap_attributes.values()
             )
 
             if len(conn.response) == 1:
@@ -178,27 +175,26 @@ class LdapAuthProvider(object):
                     mail = None
 
                 store = self.account_handler.hs.get_handlers().profile_handler.store
-                # TODO: bind email
-                if (yield self.account_handler.check_user_exists(user_id)):
-                    # Update user data
-                    yield store.set_profile_displayname(localpart, name)
-                    logger.info(
-                        "Auth based on LDAP data was successful: "
-                        "%s: %s (%s, %s)",
-                        user_id, localpart, name, mail
-                    )
-                else:
-                    # Create account
+                if not (yield self.account_handler.check_user_exists(user_id)):
+                    # Create account if not exists
                     user_id, access_token = (
                         yield self.account_handler.register(localpart=localpart)
                     )
 
+                if name is not None:
+                    # Update user Display Name
                     yield store.set_profile_displayname(localpart, name)
-                    logger.info(
-                        "Registration based on LDAP data was successful: "
-                        "%s: %s (%s, %s)",
-                        user_id, localpart, name, mail
-                    )
+
+                if mail is not None:
+                    #Update user email
+                    validated_at = self.account_handler.hs.get_clock().time_msec()
+                    yield store.user_add_threepid(user_id, "email", mail, validated_at, validated_at)
+
+                logger.info(
+                    "Registration based on LDAP data was successful: "
+                    "%s: %s (%s, %s)",
+                    user_id, localpart, name, mail
+                )
                 defer.returnValue(True)
             else:
                 if len(conn.response) == 0:
