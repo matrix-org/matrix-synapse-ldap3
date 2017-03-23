@@ -65,4 +65,5 @@ Finally, restart your Synapse server for the changes to take effect:
 
 .. code:: sh
 
-   synctl restart
+   synctl stop
+   synctl start
