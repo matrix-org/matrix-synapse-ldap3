@@ -14,11 +14,6 @@
 # limitations under the License.
 
 from twisted.internet import defer, threads
-
-
-import ldap3
-import ldap3.core.exceptions
-
 import logging
 
 
@@ -174,11 +169,11 @@ class LdapAuthProvider(object):
                 attrs = responses[0]['attributes']
                 try:
                     name = attrs[self.ldap_attributes['name']][0]
-                except KeyError:
+                except:
                     name = None
                 try:
                     mail = attrs[self.ldap_attributes['mail']][0]
-                except KeyError:
+                except:
                     mail = None
 
                 store = self.account_handler.hs.get_handlers().profile_handler.store
@@ -193,9 +188,15 @@ class LdapAuthProvider(object):
                     yield store.set_profile_displayname(localpart, name)
 
                 if mail is not None:
-                    #Update user email
+                    # Update user email
                     validated_at = self.account_handler.hs.get_clock().time_msec()
-                    yield store.user_add_threepid(user_id, "email", mail, validated_at, validated_at)
+                    yield store.user_add_threepid(
+                        user_id,
+                        "email",
+                        mail,
+                        validated_at,
+                        validated_at
+                    )
 
                 logger.info(
                     "Registration based on LDAP data was successful: "
