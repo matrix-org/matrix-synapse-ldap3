@@ -7,6 +7,7 @@ Installation
 ------------
 - Via deb package `python-matrix-synapse-ldap3` available in the same repo as the synapse package
 - Via python's package manager: `pip install matrix-synapse-ldap3`
+- Via python's package manager from git: `pip install https://github.com/matrix-org/matrix-synapse-ldap3/tarball/master`
 
 Usage
 -----
@@ -25,13 +26,14 @@ Example synapse config:
         attributes:
            uid: "samaccountname"
            mail: "email"
-           name: "givenName"
+           name: "DisplayName"
         #bind_dn:
         #bind_password:
-        #filter: "(objectClass=posixAccount)"
+        #filter: "(&(objectClass=user)(objectCategory=person))"
 
 Do not use ``cn`` attribute as uid. It's common mistake: ``cn`` attribute not uniqe in LDAP tree in most schemas!
 It's work fine only in very simple LDAP installations without complex Organizational Units structire.
+You can use: ``samaccountname``, ``uid`` or ``userPrincipalName`` (depending on the schemes in your system). These attributes are always unique.
 
 Troubleshooting and Debugging
 -----------------------------
