@@ -46,7 +46,7 @@ setup(
     description="An LDAP3 auth provider for Synapse",
     install_requires=[
         "Twisted>=15.1.0",
-        "ldap3",
+        "ldap3>=0.9.5",
         "service_identity",
     ],
     long_description=read_file(("README.rst",)),
