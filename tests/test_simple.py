@@ -1,69 +1,89 @@
 # -*- coding: utf-8 -*-
-# Copyright 2016 OpenMarket Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
-from twisted.trial import unittest
-from twisted.internet import defer
+import unittest
+from . import create_auth_provider
+from .ldap_server import get_reactor
+import threading
 
 from mock import Mock
-
-from . import create_ldap_server, create_auth_provider
-
-import logging
-logging.basicConfig()
 
 
 class LdapSimpleTestCase(unittest.TestCase):
 
-    @defer.inlineCallbacks
+    @classmethod
+    def setUpClass(cls):
+        """
+        Starts the Twisted-based "ldaptor" LDAP server in the
+        background with some dummy data.
+        """
+        cls.reactor, cls.port = get_reactor()
+        threading.Thread(target=cls.reactor.run, args=(False,)).start()
+
+    @classmethod
+    def tearDownClass(cls):
+        """
+        Stops the "ldaptor" LDAP server after tests done.
+        """
+        cls.reactor.callFromThread(cls.reactor.stop)
+
     def test_unknown_user(self):
-        server = yield create_ldap_server()
-        with server:
-            account_handler = Mock(spec_set=[])
-            provider = create_auth_provider(server, account_handler)
+        """
+        Test for non existent user
+        Must return: False
+        """
+        account_handler = Mock(spec_set=[])
+        provider = create_auth_provider(self.port, account_handler)
+        result = yield provider.check_password("@non_existent:test", "password")
+        self.assertFalse(result)
 
-            result = yield provider.check_password("@non_existent:test", "password")
-            self.assertFalse(result)
-
-    @defer.inlineCallbacks
     def test_incorrect_pwd(self):
-        server = yield create_ldap_server()
-        with server:
-            account_handler = Mock(spec_set=[])
-            provider = create_auth_provider(server, account_handler)
+        """
+        Test incorrect password
+        Must return: False
+        """
+        account_handler = Mock(spec_set=[])
+        provider = create_auth_provider(self.port, account_handler)
+        result = yield provider.check_password("@bob:test", "wrong_password")
+        self.assertFalse(result)
 
-            result = yield provider.check_password("@bob:test", "wrong_password")
-            self.assertFalse(result)
-
-    @defer.inlineCallbacks
     def test_correct_pwd(self):
-        server = yield create_ldap_server()
-        with server:
-            account_handler = Mock(spec_set=["check_user_exists"])
-            account_handler.check_user_exists.return_value = True
-            provider = create_auth_provider(server, account_handler)
+        """
+        Test for correct password
+        Must return: True
+        """
+        account_handler = Mock(spec=["check_user_exists", "register", "hs"])
+        account_handler.hs.get_handlers().profile_handler.store = Mock(
+            spec_set=["user_add_threepid", "set_profile_displayname"]
+        )
+        account_handler.check_user_exists.return_value = True
+        provider = create_auth_provider(self.port, account_handler)
+        result = yield provider.check_password("@bob:test", "secret")
+        self.assertTrue(result)
 
-            result = yield provider.check_password("@bob:test", "secret")
-            self.assertTrue(result)
-
-    @defer.inlineCallbacks
     def test_no_pwd(self):
-        server = yield create_ldap_server()
-        with server:
-            account_handler = Mock(spec_set=["check_user_exists"])
-            account_handler.check_user_exists.return_value = True
-            provider = create_auth_provider(server, account_handler)
+        """
+        Test for auth without password
+        Must return: True
+        """
+        account_handler = Mock(spec=["check_user_exists", "register", "hs"])
+        account_handler.hs.get_handlers().profile_handler.store = Mock(
+            spec_set=["user_add_threepid", "set_profile_displayname"]
+        )
+        account_handler.check_user_exists.return_value = True
+        provider = create_auth_provider(self.port, account_handler)
+        result = yield provider.check_password("@bob:test", "")
+        self.assertFalse(result)
 
-            result = yield provider.check_password("@bob:test", "")
-            self.assertFalse(result)
+    def test_no_mail_and_name(self):
+        """
+        Test for auth user without main and name attributes filed
+        Must return: True
+        """
+        account_handler = Mock(spec=["check_user_exists", "register", "hs"])
+        account_handler.hs.get_handlers().profile_handler.store = Mock(
+            spec_set=["user_add_threepid", "set_profile_displayname"]
+        )
+        account_handler.check_user_exists.return_value = True
+        provider = create_auth_provider(self.port, account_handler)
+        result = yield provider.check_password("@jdoe:test", "terces")
+        self.assertFalse(result)
