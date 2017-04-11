@@ -35,6 +35,7 @@ Do not use ``cn`` attribute as uid. It's common mistake: ``cn`` attribute not un
 It's work fine only in very simple LDAP installations without complex Organizational Units structire.
 You can use: ``samaccountname``, ``uid`` or ``userPrincipalName`` (depending on the schemes in your system). These attributes are always unique.
 
+
 Troubleshooting and Debugging
 -----------------------------
 
@@ -67,5 +68,6 @@ Finally, restart your Synapse server for the changes to take effect:
 
 .. code:: sh
 
-   synctl stop
-   synctl start
+
+   synctl restart
+
