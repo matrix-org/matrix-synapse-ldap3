@@ -85,7 +85,16 @@ class LdapAuthProvider(object):
         localpart = user_id.split(":", 1)[0][1:]
 
         try:
-            server = ldap3.Server(self.ldap_uri, get_info=None)
+            use_ssl = self.ldap_uri.startswith("ldaps://")
+            chunks = self.ldap_uri.split(":")
+            try:
+                port = int(chunks[-1])
+                uri = ":".join(chunks[:-1])
+            except:
+                uri = ":".join(chunks)
+                port = 389
+
+            server = ldap3.Server(uri, port=port, use_ssl=use_ssl, get_info=None)
             logger.debug(
                 "Attempting LDAP connection with %s",
                 self.ldap_uri
