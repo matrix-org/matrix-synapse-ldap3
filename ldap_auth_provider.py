@@ -190,13 +190,28 @@ class LdapAuthProvider(object):
                 if mail is not None:
                     # Update user email
                     validated_at = self.account_handler.hs.get_clock().time_msec()
-                    yield store.user_add_threepid(
-                        user_id,
+                    user_id_by_threepid = yield store.get_user_id_by_threepid(
                         "email",
-                        mail,
-                        validated_at,
-                        validated_at
+                        mail
                     )
+                    # add email only if not exists
+                    if not user_id_by_threepid:
+                        yield store.user_add_threepid(
+                            user_id,
+                            "email",
+                            mail,
+                            validated_at,
+                            validated_at
+                        )
+                    elif not user_id_by_threepid.lower() == user_id.lower():
+                        logger.error(
+                            'Auth user %s with %s email but user %s'
+                            'already have same email' % (
+                                user_id,
+                                mail,
+                                user_id_by_threepid
+                            )
+                        )
 
                 logger.info(
                     "Registration based on LDAP data was successful: "
