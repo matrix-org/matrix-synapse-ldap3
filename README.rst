@@ -30,10 +30,24 @@ Example synapse config:
         #bind_dn:
         #bind_password:
         #filter: "(&(objectClass=user)(objectCategory=person))"
+        # If you do not want your internal users to be blocked from outside
+        # by scrambling passwords through this service, then you need
+        # implement a more rigid account lockout policy then in yor LDAP server
+        # This example user locks after 5 badd attemps to 5 minutes
+        account_lockout_policy:
+            locktime_s: 300
+            attemps: 5
+
 
 Do not use ``cn`` attribute as uid. It's common mistake: ``cn`` attribute not uniqe in LDAP tree in most schemas!
 It's work fine only in very simple LDAP installations without complex Organizational Units structire.
 You can use: ``samaccountname``, ``uid`` or ``userPrincipalName`` (depending on the schemes in your system). These attributes are always unique.
+
+Account Lockout Policy
+----------------------
+If you do not want your internal users to be blocked from outside
+ by scrambling passwords through this service, then you need
+ implement a more rigid account lockout policy then in yor LDAP server
 
 
 Troubleshooting and Debugging

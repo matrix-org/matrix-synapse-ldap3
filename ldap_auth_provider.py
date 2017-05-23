@@ -15,9 +15,9 @@
 
 from twisted.internet import defer, threads
 import logging
+import time
 
-
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 
 try:
@@ -66,6 +66,14 @@ class LdapAuthProvider(object):
             self.ldap_bind_password = config.bind_password
             self.ldap_filter = config.filter
 
+        # If you do not want your internal users to be blocked from outside
+        # by scrambling passwords through this service, then you need
+        # implement a more rigid account lockout policy then in yor LDAP server
+        self.ldap_alp_exists = config.account_lockout_policy_exists
+        if self.ldap_alp_exists:
+            self.ldap_alp = config.account_lockout_policy
+        self.bad_login_attemps = {}
+
     @defer.inlineCallbacks
     def check_password(self, user_id, password):
         """ Attempt to authenticate a user against an LDAP Server
@@ -78,6 +86,20 @@ class LdapAuthProvider(object):
             defer.returnValue(False)
         # user_id is of the form @foo:bar.com
         localpart = user_id.split(":", 1)[0][1:]
+
+        now = time.time()
+        if localpart in self.bad_login_attemps.keys():
+            if self.bad_login_attemps[localpart]['count'] >= self.ldap_alp['attemps']:
+                unlock_time = self.bad_login_attemps[localpart]['ts'] + \
+                    self.ldap_alp['locktime_s']
+                if now <= unlock_time:
+                    logger.error(
+                        'User %s is locked by account lockout policy. '
+                        'This login attemp will fail. '
+                        'Seconds to unlock: %d' %
+                        (user_id, unlock_time - now)
+                    )
+                    defer.returnValue(False)
 
         try:
             server = ldap3.Server(self.ldap_uri, get_info=None)
@@ -102,6 +124,15 @@ class LdapAuthProvider(object):
                     conn
                 )
                 if not result:
+                    if self.ldap_alp_exists:
+                        if localpart in self.bad_login_attemps.keys():
+                            self.bad_login_attemps[localpart]['count'] += 1
+                            self.bad_login_attemps[localpart]['ts'] = now
+                        else:
+                            self.bad_login_attemps[localpart] = {
+                                'count': 1,
+                                'ts': now
+                            }
                     defer.returnValue(False)
             elif self.ldap_mode == LDAPMode.SEARCH:
                 result, conn = yield self._ldap_authenticated_search(
@@ -114,6 +145,15 @@ class LdapAuthProvider(object):
                     conn
                 )
                 if not result:
+                    if self.ldap_alp_exists:
+                        if localpart in self.bad_login_attemps.keys():
+                            self.bad_login_attemps[localpart]['count'] += 1
+                            self.bad_login_attemps[localpart]['ts'] = now
+                        else:
+                            self.bad_login_attemps[localpart] = {
+                                'count': 1,
+                                'ts': now
+                            }
                     defer.returnValue(False)
             else:
                 raise RuntimeError(
@@ -218,6 +258,8 @@ class LdapAuthProvider(object):
                     "%s: %s (%s, %s)",
                     user_id, localpart, name, mail
                 )
+                if localpart in self.bad_login_attemps:
+                    del self.bad_login_attemps[localpart]
                 defer.returnValue(True)
             else:
                 if len(responses) == 0:
@@ -275,6 +317,16 @@ class LdapAuthProvider(object):
             "name",
             "mail",
         ])
+
+        if 'account_lockout_policy' in config:
+            ldap_config.account_lockout_policy_exists = True
+            ldap_config.account_lockout_policy = config['account_lockout_policy']
+            _require_keys(config['account_lockout_policy'], [
+                'attemps',
+                'locktime_s',
+            ])
+        else:
+            ldap_config.account_lockout_policy_exists = False
 
         return ldap_config
 
