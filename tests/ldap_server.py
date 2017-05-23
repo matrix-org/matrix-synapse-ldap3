@@ -35,6 +35,15 @@ mail: bob@example.org
 userPassword: secret
 gn: Bob
 
+dn: cn=jin,ou=people,dc=example,dc=org
+cn: jin
+objectclass: person
+gn: jin
+mail: jinn@example.org
+mail: jin@example.org
+userPassword: secret
+gn: Jin
+
 dn: cn=jdoe,ou=people,dc=example,dc=org
 cn: jdoe
 gn: John Doe

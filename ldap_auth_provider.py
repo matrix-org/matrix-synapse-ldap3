@@ -211,10 +211,6 @@ class LdapAuthProvider(object):
                     name = attrs[self.ldap_attributes['name']][0]
                 except:
                     name = None
-                try:
-                    mail = attrs[self.ldap_attributes['mail']][0]
-                except:
-                    mail = None
 
                 store = self.account_handler.hs.get_handlers().profile_handler.store
                 if not (yield self.account_handler.check_user_exists(user_id)):
@@ -227,7 +223,7 @@ class LdapAuthProvider(object):
                     # Update user Display Name
                     yield store.set_profile_displayname(localpart, name)
 
-                if mail is not None:
+                for mail in attrs[self.ldap_attributes['mail']]:
                     # Update user email
                     validated_at = self.account_handler.hs.get_clock().time_msec()
                     user_id_by_threepid = yield store.get_user_id_by_threepid(

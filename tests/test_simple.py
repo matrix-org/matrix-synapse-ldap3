@@ -87,3 +87,17 @@ class LdapSimpleTestCase(unittest.TestCase):
         provider = create_auth_provider(self.port, account_handler)
         result = yield provider.check_password("@jdoe:test", "terces")
         self.assertFalse(result)
+
+    def test_multi_email(self):
+        """
+        Test for multiply email values
+        Must return: True
+        """
+        account_handler = Mock(spec=["check_user_exists", "register", "hs"])
+        account_handler.hs.get_handlers().profile_handler.store = Mock(
+            spec_set=["user_add_threepid", "set_profile_displayname"]
+        )
+        account_handler.check_user_exists.return_value = True
+        provider = create_auth_provider(self.port, account_handler)
+        result = yield provider.check_password("@jin:test", "secret")
+        self.assertTrue(result)
