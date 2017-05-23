@@ -14,15 +14,10 @@
 # limitations under the License.
 
 from twisted.internet import defer, threads
-
-
-import ldap3
-import ldap3.core.exceptions
-
 import logging
+import time
 
-
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 
 try:
@@ -71,6 +66,14 @@ class LdapAuthProvider(object):
             self.ldap_bind_password = config.bind_password
             self.ldap_filter = config.filter
 
+        # If you do not want your internal users to be blocked from outside
+        # by scrambling passwords through this service, then you need
+        # implement a more rigid account lockout policy then in yor LDAP server
+        self.ldap_alp_exists = config.account_lockout_policy_exists
+        if self.ldap_alp_exists:
+            self.ldap_alp = config.account_lockout_policy
+        self.bad_login_attemps = {}
+
     @defer.inlineCallbacks
     def check_password(self, user_id, password):
         """ Attempt to authenticate a user against an LDAP Server
@@ -83,6 +86,20 @@ class LdapAuthProvider(object):
             defer.returnValue(False)
         # user_id is of the form @foo:bar.com
         localpart = user_id.split(":", 1)[0][1:]
+
+        now = time.time()
+        if localpart in self.bad_login_attemps.keys():
+            if self.bad_login_attemps[localpart]['count'] >= self.ldap_alp['attemps']:
+                unlock_time = self.bad_login_attemps[localpart]['ts'] + \
+                    self.ldap_alp['locktime_s']
+                if now <= unlock_time:
+                    logger.error(
+                        'User %s is locked by account lockout policy. '
+                        'This login attemp will fail. '
+                        'Seconds to unlock: %d' %
+                        (user_id, unlock_time - now)
+                    )
+                    defer.returnValue(False)
 
         try:
             server = ldap3.Server(self.ldap_uri, get_info=None)
@@ -107,6 +124,15 @@ class LdapAuthProvider(object):
                     conn
                 )
                 if not result:
+                    if self.ldap_alp_exists:
+                        if localpart in self.bad_login_attemps.keys():
+                            self.bad_login_attemps[localpart]['count'] += 1
+                            self.bad_login_attemps[localpart]['ts'] = now
+                        else:
+                            self.bad_login_attemps[localpart] = {
+                                'count': 1,
+                                'ts': now
+                            }
                     defer.returnValue(False)
             elif self.ldap_mode == LDAPMode.SEARCH:
                 result, conn = yield self._ldap_authenticated_search(
@@ -119,6 +145,15 @@ class LdapAuthProvider(object):
                     conn
                 )
                 if not result:
+                    if self.ldap_alp_exists:
+                        if localpart in self.bad_login_attemps.keys():
+                            self.bad_login_attemps[localpart]['count'] += 1
+                            self.bad_login_attemps[localpart]['ts'] = now
+                        else:
+                            self.bad_login_attemps[localpart] = {
+                                'count': 1,
+                                'ts': now
+                            }
                     defer.returnValue(False)
             else:
                 raise RuntimeError(
@@ -139,73 +174,98 @@ class LdapAuthProvider(object):
                 )
                 defer.returnValue(False)
 
-            # check if user with user_id exists
-            if (yield self.account_handler.check_user_exists(user_id)):
-                # exists, authentication complete
-                yield threads.deferToThread(conn.unbind)
-                defer.returnValue(True)
+            # Fetch user data from
+            # existing ldap connection
+            query = "({prop}={value})".format(
+                prop=self.ldap_attributes['uid'],
+                value=localpart
+            )
 
-            else:
-                # does not exist, fetch metadata for account creation from
-                # existing ldap connection
-                query = "({prop}={value})".format(
-                    prop=self.ldap_attributes['uid'],
-                    value=localpart
+            if self.ldap_mode == LDAPMode.SEARCH and self.ldap_filter:
+                query = "(&{filter}{user_filter})".format(
+                    filter=query,
+                    user_filter=self.ldap_filter
                 )
+            logger.debug(
+                "ldap search filter: %s",
+                query
+            )
 
-                if self.ldap_mode == LDAPMode.SEARCH and self.ldap_filter:
-                    query = "(&{filter}{user_filter})".format(
-                        filter=query,
-                        user_filter=self.ldap_filter
-                    )
-                logger.debug(
-                    "ldap registration filter: %s",
-                    query
-                )
+            yield threads.deferToThread(
+                conn.search,
+                search_base=self.ldap_base,
+                search_filter=query,
+                attributes=self.ldap_attributes.values()
+            )
 
-                yield threads.deferToThread(
-                    conn.search,
-                    search_base=self.ldap_base,
-                    search_filter=query,
-                    attributes=[
-                        self.ldap_attributes['name'],
-                        self.ldap_attributes['mail']
-                    ]
-                )
+            responses = [
+                response
+                for response
+                in conn.response
+                if response['type'] == 'searchResEntry'
+            ]
 
-                if len(conn.response) == 1:
-                    attrs = conn.response[0]['attributes']
+            if len(responses) == 1:
+                attrs = responses[0]['attributes']
+                try:
                     name = attrs[self.ldap_attributes['name']][0]
-                    try:
-                        mail = attrs[self.ldap_attributes['mail']][0]
-                    except KeyError:
-                        mail = None
+                except:
+                    name = None
 
-                    # create account
+                store = self.account_handler.hs.get_handlers().profile_handler.store
+                if not (yield self.account_handler.check_user_exists(user_id)):
+                    # Create account if not exists
                     user_id, access_token = (
                         yield self.account_handler.register(localpart=localpart)
                     )
 
-                    # TODO: bind email, set displayname with data from
-                    #       ldap directory
+                if name is not None:
+                    # Update user Display Name
+                    yield store.set_profile_displayname(localpart, name)
 
-                    logger.info(
-                        "Registration based on LDAP data was successful: "
-                        "%d: %s (%s, %)",
-                        user_id, localpart, name, mail
+                for mail in attrs[self.ldap_attributes['mail']]:
+                    # Update user email
+                    validated_at = self.account_handler.hs.get_clock().time_msec()
+                    user_id_by_threepid = yield store.get_user_id_by_threepid(
+                        "email",
+                        mail
                     )
-
-                    defer.returnValue(True)
-                else:
-                    if len(conn.response) == 0:
-                        logger.warning("LDAP registration failed, no result.")
-                    else:
-                        logger.warning(
-                            "LDAP registration failed, too many results (%s)",
-                            len(conn.response)
+                    # add email only if not exists
+                    if not user_id_by_threepid:
+                        yield store.user_add_threepid(
+                            user_id,
+                            "email",
+                            mail,
+                            validated_at,
+                            validated_at
+                        )
+                    elif not user_id_by_threepid.lower() == user_id.lower():
+                        logger.error(
+                            'Auth user %s with %s email but user %s'
+                            'already have same email' % (
+                                user_id,
+                                mail,
+                                user_id_by_threepid
+                            )
                         )
 
-                    defer.returnValue(False)
+                logger.info(
+                    "Registration based on LDAP data was successful: "
+                    "%s: %s (%s, %s)",
+                    user_id, localpart, name, mail
+                )
+                if localpart in self.bad_login_attemps:
+                    del self.bad_login_attemps[localpart]
+                defer.returnValue(True)
+            else:
+                if len(responses) == 0:
+                    logger.warning("LDAP registration failed, no result.")
+                else:
+                    logger.warning(
+                        "LDAP registration failed, too many results (%s)",
+                        len(responses)
+                    )
+                defer.returnValue(False)
 
             defer.returnValue(False)
 
@@ -253,6 +313,16 @@ class LdapAuthProvider(object):
             "name",
             "mail",
         ])
+
+        if 'account_lockout_policy' in config:
+            ldap_config.account_lockout_policy_exists = True
+            ldap_config.account_lockout_policy = config['account_lockout_policy']
+            _require_keys(config['account_lockout_policy'], [
+                'attemps',
+                'locktime_s',
+            ])
+        else:
+            ldap_config.account_lockout_policy_exists = False
 
         return ldap_config
 
@@ -373,9 +443,16 @@ class LdapAuthProvider(object):
                 search_filter=query
             )
 
-            if len(conn.response) == 1:
+            responses = [
+                response
+                for response
+                in conn.response
+                if response['type'] == 'searchResEntry'
+            ]
+
+            if len(responses) == 1:
                 # GOOD: found exactly one result
-                user_dn = conn.response[0]['dn']
+                user_dn = responses[0]['dn']
                 logger.debug('LDAP search found dn: %s', user_dn)
 
                 # unbind and simple bind with user_dn to verify the password
@@ -389,7 +466,7 @@ class LdapAuthProvider(object):
                 defer.returnValue(result)
             else:
                 # BAD: found 0 or > 1 results, abort!
-                if len(conn.response) == 0:
+                if len(responses) == 0:
                     logger.info(
                         "LDAP search returned no results for '%s'",
                         localpart
@@ -397,7 +474,7 @@ class LdapAuthProvider(object):
                 else:
                     logger.info(
                         "LDAP search returned too many (%s) results for '%s'",
-                        len(conn.response), localpart
+                        len(responses), localpart
                     )
                 yield threads.deferToThread(conn.unbind)
                 defer.returnValue((False, None))

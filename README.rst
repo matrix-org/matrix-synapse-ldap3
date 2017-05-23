@@ -7,6 +7,7 @@ Installation
 ------------
 - Via deb package `python-matrix-synapse-ldap3` available in the same repo as the synapse package
 - Via python's package manager: `pip install matrix-synapse-ldap3`
+- Via python's package manager from git: `pip install https://github.com/matrix-org/matrix-synapse-ldap3/tarball/master`
 
 Usage
 -----
@@ -23,12 +24,31 @@ Example synapse config:
         start_tls: true
         base: "ou=users,dc=example,dc=com"
         attributes:
-           uid: "cn"
+           uid: "samaccountname"
            mail: "email"
-           name: "givenName"
+           name: "DisplayName"
         #bind_dn:
         #bind_password:
-        #filter: "(objectClass=posixAccount)"
+        #filter: "(&(objectClass=user)(objectCategory=person))"
+        # If you do not want your internal users to be blocked from outside
+        # by scrambling passwords through this service, then you need
+        # implement a more rigid account lockout policy then in yor LDAP server
+        # This example user locks after 5 badd attemps to 5 minutes
+        account_lockout_policy:
+            locktime_s: 300
+            attemps: 5
+
+
+Do not use ``cn`` attribute as uid. It's common mistake: ``cn`` attribute not uniqe in LDAP tree in most schemas!
+It's work fine only in very simple LDAP installations without complex Organizational Units structire.
+You can use: ``samaccountname``, ``uid`` or ``userPrincipalName`` (depending on the schemes in your system). These attributes are always unique.
+
+Account Lockout Policy
+----------------------
+If you do not want your internal users to be blocked from outside
+ by scrambling passwords through this service, then you need
+ implement a more rigid account lockout policy then in yor LDAP server
+
 
 Troubleshooting and Debugging
 -----------------------------
@@ -62,4 +82,6 @@ Finally, restart your Synapse server for the changes to take effect:
 
 .. code:: sh
 
+
    synctl restart
+
