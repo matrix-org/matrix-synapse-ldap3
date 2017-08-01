@@ -22,7 +22,7 @@ import ldap3.core.exceptions
 import logging
 
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 
 try:
