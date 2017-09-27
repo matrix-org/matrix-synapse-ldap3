@@ -198,7 +198,7 @@ class LdapAuthProvider(object):
 
                     logger.info(
                         "Registration based on LDAP data was successful: "
-                        "%d: %s (%s, %)",
+                        "%s: %s (%s, %s)",
                         user_id, localpart, name, mail
                     )
 
