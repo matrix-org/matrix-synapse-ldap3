@@ -185,7 +185,7 @@ class LdapAuthProvider(object):
                     name = attrs[self.ldap_attributes['name']][0]
                     try:
                         mail = attrs[self.ldap_attributes['mail']][0]
-                    except KeyError:
+                    except IndexError, KeyError:
                         mail = None
 
                     # create account
