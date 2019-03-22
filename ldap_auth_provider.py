@@ -109,8 +109,9 @@ class LdapAuthProvider(object):
                 if not result:
                     defer.returnValue(False)
             elif self.ldap_mode == LDAPMode.SEARCH:
-                result, conn = yield self._ldap_authenticated_search(
-                    server=server, localpart=localpart, password=password
+                filters = [("localpart", localpart)]
+                result, conn, _ = yield self._ldap_authenticated_search(
+                    server=server, password=password, filters=filters
                 )
                 logger.debug(
                     'LDAP auth method authenticated search returned: '
@@ -185,7 +186,7 @@ class LdapAuthProvider(object):
                     name = attrs[self.ldap_attributes['name']][0]
                     try:
                         mail = attrs[self.ldap_attributes['mail']][0]
-                    except KeyError:
+                    except (KeyError, IndexError):
                         mail = None
 
                     # create account
@@ -219,6 +220,87 @@ class LdapAuthProvider(object):
         except ldap3.core.exceptions.LDAPException as e:
             logger.warning("Error during ldap authentication: %s", e)
             defer.returnValue(False)
+
+    def get_supported_login_types(self):
+        """Report that we support email based authentication in addition to
+        username/password"""
+        auth_dict = {
+            "m.id.thirdparty": ("medium", "address")
+        }
+
+        return auth_dict
+
+    @defer.inlineCallbacks
+    def check_3pid_auth(self, medium, address, password):
+        """Handle authentication against thirdparty login types, such as email"""
+
+        if medium != "email":
+            return
+
+        # Talk to LDAP and check if this email/password combo is all
+        # good in the hood
+        try:
+            server = ldap3.Server(self.ldap_uri, get_info=None)
+            logger.debug(
+                "Attempting LDAP connection with %s",
+                self.ldap_uri
+            )
+
+            search_filter = [("mail", address)]
+            result, conn, response = yield self._ldap_authenticated_search(
+                server=server, password=password, filters=search_filter
+            )
+            logger.debug(
+                'LDAP auth method authenticated search returned: '
+                '%s (conn: %s) (response: %s)',
+                result,
+                conn,
+                response
+            )
+            if not result:
+                defer.returnValue(None)
+
+            try:
+                logger.info(
+                    "User authenticated against LDAP server: %s",
+                    conn
+                )
+            except NameError:
+                logger.warning(
+                    "Authentication method yielded no LDAP connection, "
+                    "aborting!"
+                )
+                defer.returnValue(None)
+
+            # check if user with user_id exists
+            localpart = list(filter(lambda x: x.startswith("cn="), response['dn'].split(",")))[0]
+            localpart = localpart.split("=")[1]
+            user_id = self.account_handler.get_qualified_user_id(localpart)
+
+            # TODO: Factor the below out into a new method
+            if (yield self.account_handler.check_user_exists(user_id)):
+                # exists, authentication complete
+                defer.returnValue(user_id)
+
+            # create account
+            user_id, access_token = (
+                yield self.account_handler.register(localpart=localpart)
+            )
+
+            # TODO: bind email, set displayname with data from
+            #       ldap directory
+
+            logger.info(
+                "Registration based on LDAP data was successful: "
+                "%s: %s (%s, %s)",
+                user_id, localpart, address
+            )
+
+            defer.returnValue(user_id)
+
+        except ldap3.core.exceptions.LDAPException as e:
+            logger.warning("Error during ldap authentication: %s", e)
+            defer.returnValue(None)
 
     @staticmethod
     def parse_config(config):
@@ -275,7 +357,7 @@ class LdapAuthProvider(object):
         """
 
         try:
-            # bind with the the local users ldap credentials
+            # bind with the the local user's ldap credentials
             conn = yield threads.deferToThread(
                 ldap3.Connection,
                 server, bind_dn, password,
@@ -314,10 +396,13 @@ class LdapAuthProvider(object):
             defer.returnValue((False, None))
 
     @defer.inlineCallbacks
-    def _ldap_authenticated_search(self, server, localpart, password):
+    def _ldap_authenticated_search(self, server, password, filters):
         """ Attempt to login with the preconfigured bind_dn
             and then continue searching and filtering within
             the base_dn
+
+            filters (List[Tuple[str,str]]): Is a list of tuples of key/value
+                pairs to filter the LDAP search by
 
             Returns (True, LDAP3Connection)
                 if a single matching DN within the base was found
@@ -357,19 +442,24 @@ class LdapAuthProvider(object):
                     conn.result['description']
                 )
                 yield threads.deferToThread(conn.unbind)
-                defer.returnValue((False, None))
+                defer.returnValue((False, None, None))
 
-            # construct search_filter like (uid=localpart)
-            query = "({prop}={value})".format(
-                prop=self.ldap_attributes['uid'],
-                value=localpart
-            )
-            if self.ldap_filter:
-                # combine with the AND expression
-                query = "(&{query}{filter})".format(
-                    query=query,
-                    filter=self.ldap_filter
+            # Construct search filter
+            query = ""
+            for filter in filters:
+                query += "({key}={value})".format(
+                    key=filter[0],
+                    value=filter[1],
                 )
+
+            if self.ldap_filter:
+                query += self.ldap_filter
+
+            # Create an AND query
+            query = "(&{query})".format(
+                query=query,
+            )
+
             logger.debug(
                 "LDAP search filter: %s",
                 query
@@ -400,25 +490,26 @@ class LdapAuthProvider(object):
                     server=server, bind_dn=user_dn, password=password
                 )
 
-                defer.returnValue(result)
+                defer.returnValue((result, None, responses[0]))
             else:
                 # BAD: found 0 or > 1 results, abort!
                 if len(responses) == 0:
                     logger.info(
                         "LDAP search returned no results for '%s'",
-                        localpart
+                        filters
                     )
                 else:
                     logger.info(
                         "LDAP search returned too many (%s) results for '%s'",
-                        len(responses), localpart
+                        len(responses), filters
                     )
                 yield threads.deferToThread(conn.unbind)
-                defer.returnValue((False, None))
+
+                defer.returnValue((False, None, None))
 
         except ldap3.core.exceptions.LDAPException as e:
             logger.warning("Error during LDAP authentication: %s", e)
-            defer.returnValue((False, None))
+            defer.returnValue((False, None, None))
 
 
 def _require_keys(config, required):
