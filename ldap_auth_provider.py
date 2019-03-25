@@ -50,7 +50,7 @@ class LDAPMode(object):
 
 
 class LdapAuthProvider(object):
-    __version__ = "0.1"
+    __version__ = "0.2"
 
     def __init__(self, config, account_handler):
         self.account_handler = account_handler
@@ -190,18 +190,7 @@ class LdapAuthProvider(object):
                         mail = None
 
                     # create account
-                    user_id, access_token = (
-                        yield self.account_handler.register(localpart=localpart)
-                    )
-
-                    # TODO: bind email, set displayname with data from
-                    #       ldap directory
-
-                    logger.info(
-                        "Registration based on LDAP data was successful: "
-                        "%s: %s (%s, %s)",
-                        user_id, localpart, name, mail
-                    )
+                    yield register_user(localpart)
 
                     defer.returnValue(True)
                 else:
@@ -232,13 +221,23 @@ class LdapAuthProvider(object):
 
     @defer.inlineCallbacks
     def check_3pid_auth(self, medium, address, password):
-        """Handle authentication against thirdparty login types, such as email"""
+        """ Handle authentication against thirdparty login types, such as email
 
+            Args:
+                medium (str): Medium of the 3PID (e.g email, msisdn).
+                address (str): Address of the 3PID (e.g bob@example.com for email).
+                password (str): The provided password of the user.
+
+            Returns:
+                user_id (str|None): ID of the user if authentication
+                    successful. None otherwise.
+        """
+
+        # We currently only support email
         if medium != "email":
             return
 
-        # Talk to LDAP and check if this email/password combo is all
-        # good in the hood
+        # Talk to LDAP and check if this email/password combo is correct
         try:
             server = ldap3.Server(self.ldap_uri, get_info=None)
             logger.debug(
@@ -273,34 +272,53 @@ class LdapAuthProvider(object):
                 defer.returnValue(None)
 
             # check if user with user_id exists
-            localpart = list(filter(lambda x: x.startswith("cn="), response['dn'].split(",")))[0]
+
+            # Extract the username from the search response from the LDAP server
+            # Response is in the format "key=val,cn=johndoe,key=val"
+            cn_item_list = filter(lambda x: x.startswith("cn="), response['dn'].split(","))
+            localpart = next(cn_item_list)
             localpart = localpart.split("=")[1]
-            user_id = self.account_handler.get_qualified_user_id(localpart)
 
-            # TODO: Factor the below out into a new method
-            if (yield self.account_handler.check_user_exists(user_id)):
-                # exists, authentication complete
-                defer.returnValue(user_id)
-
-            # create account
-            user_id, access_token = (
-                yield self.account_handler.register(localpart=localpart)
-            )
-
-            # TODO: bind email, set displayname with data from
-            #       ldap directory
-
-            logger.info(
-                "Registration based on LDAP data was successful: "
-                "%s: %s (%s, %s)",
-                user_id, localpart, address
-            )
+            # Register the user
+            user_id = yield register_user(localpart)
 
             defer.returnValue(user_id)
 
         except ldap3.core.exceptions.LDAPException as e:
             logger.warning("Error during ldap authentication: %s", e)
             defer.returnValue(None)
+
+    @defer.inlineCallbacks
+    def register_user(self, localpart, threepid_address):
+        """Register a Synapse user, first checking if they exist.
+
+        Args:
+            localpart (str): Localpart of the user to register on this homeserver.
+
+        Returns:
+            user_id (str): User ID of the newly registered user.
+        """
+        # Get full user id from localpart
+        user_id = self.account_handler.get_qualified_user_id(localpart)
+
+        if (yield self.account_handler.check_user_exists(user_id)):
+            # exists, authentication complete
+            defer.returnValue(user_id)
+
+        # create account
+        user_id, access_token = (
+            yield self.account_handler.register(localpart=localpart)
+        )
+
+        # TODO: bind email, set displayname with data from
+        #       ldap directory
+
+        logger.info(
+            "Registration based on LDAP data was successful: %s",
+            user_id,
+        )
+
+        defer.returnValue(user_id)
 
     @staticmethod
     def parse_config(config):
