@@ -190,7 +190,7 @@ class LdapAuthProvider(object):
                         mail = None
 
                     # create account
-                    yield register_user(localpart)
+                    yield self.register_user(localpart, name, mail)
 
                     defer.returnValue(True)
                 else:
@@ -247,7 +247,8 @@ class LdapAuthProvider(object):
 
             search_filter = [("mail", address)]
             result, conn, response = yield self._ldap_authenticated_search(
-                server=server, password=password, filters=search_filter
+                server=server, password=password, filters=search_filter,
+                attributes=['givenname', 'cn'],
             )
             logger.debug(
                 'LDAP auth method authenticated search returned: '
@@ -271,16 +272,12 @@ class LdapAuthProvider(object):
                 )
                 defer.returnValue(None)
 
-            # check if user with user_id exists
-
             # Extract the username from the search response from the LDAP server
-            # Response is in the format "key=val,cn=johndoe,key=val"
-            cn_item_list = filter(lambda x: x.startswith("cn="), response['dn'].split(","))
-            localpart = next(cn_item_list)
-            localpart = localpart.split("=")[1]
+            localpart = response["attributes"].get("cn", [""])[0]
+            givenName = response["attributes"].get("givenName", [localpart])[0]
 
             # Register the user
-            user_id = yield register_user(localpart)
+            user_id = yield self.register_user(localpart, givenName, address)
 
             defer.returnValue(user_id)
 
@@ -289,11 +286,13 @@ class LdapAuthProvider(object):
             defer.returnValue(None)
 
     @defer.inlineCallbacks
-    def register_user(self, localpart, threepid_address):
+    def register_user(self, localpart, name, email_address):
         """Register a Synapse user, first checking if they exist.
 
         Args:
             localpart (str): Localpart of the user to register on this homeserver.
+            name (str): Full name of the user.
+            email_address (str): Email address of the user.
 
         Returns:
             user_id (str): User ID of the newly registered user.
@@ -307,11 +306,10 @@ class LdapAuthProvider(object):
 
         # create account
         user_id, access_token = (
-            yield self.account_handler.register(localpart=localpart)
+            yield self.account_handler.register(
+                localpart=localpart, displayname=name, email=email_address,
+            )
         )
-
-        # TODO: bind email, set displayname with data from
-        #       ldap directory
 
         logger.info(
             "Registration based on LDAP data was successful: %s",
@@ -414,13 +412,17 @@ class LdapAuthProvider(object):
             defer.returnValue((False, None))
 
     @defer.inlineCallbacks
-    def _ldap_authenticated_search(self, server, password, filters):
+    def _ldap_authenticated_search(self, server, password, filters, attributes=[]):
         """ Attempt to login with the preconfigured bind_dn
             and then continue searching and filtering within
             the base_dn
 
-            filters (List[Tuple[str,str]]): Is a list of tuples of key/value
-                pairs to filter the LDAP search by
+            server (str): The LDAP server to connect to.
+            password (str): The user's password.
+            filters (List[Tuple[str,str]]): A list of tuples of key/value
+                pairs to filter the LDAP search by.
+            attributes (List[str]): A list of strings of attribute names to
+                return.
 
             Returns (True, LDAP3Connection)
                 if a single matching DN within the base was found
@@ -485,7 +487,8 @@ class LdapAuthProvider(object):
             yield threads.deferToThread(
                 conn.search,
                 search_base=self.ldap_base,
-                search_filter=query
+                search_filter=query,
+                attributes=attributes,
             )
 
             responses = [
