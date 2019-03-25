@@ -298,7 +298,7 @@ class LdapAuthProvider(object):
         # create account
         user_id, access_token = (
             yield self.account_handler.register(
-                localpart=localpart, displayname=name, email=email_address,
+                localpart=localpart, displayname=name, emails=[email_address],
             )
         )
 
