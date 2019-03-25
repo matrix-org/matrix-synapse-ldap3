@@ -210,15 +210,6 @@ class LdapAuthProvider(object):
             logger.warning("Error during ldap authentication: %s", e)
             defer.returnValue(False)
 
-    def get_supported_login_types(self):
-        """Report that we support email based authentication in addition to
-        username/password"""
-        auth_dict = {
-            "m.id.thirdparty": ("medium", "address")
-        }
-
-        return auth_dict
-
     @defer.inlineCallbacks
     def check_3pid_auth(self, medium, address, password):
         """ Handle authentication against thirdparty login types, such as email
