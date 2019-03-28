@@ -50,7 +50,7 @@ class LDAPMode(object):
 
 
 class LdapAuthProvider(object):
-    __version__ = "0.2"
+    __version__ = "0.1"
 
     def __init__(self, config, account_handler):
         self.account_handler = account_handler
