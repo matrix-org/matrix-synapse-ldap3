@@ -261,7 +261,7 @@ class LdapAuthProvider(object):
                     "Authentication method yielded no LDAP connection, "
                     "aborting!"
                 )
-                defer.returnValue(None)
+                raise
 
             # Extract the username from the search response from the LDAP server
             localpart = response["attributes"].get("cn", [""])[0]
@@ -274,7 +274,7 @@ class LdapAuthProvider(object):
 
         except ldap3.core.exceptions.LDAPException as e:
             logger.warning("Error during ldap authentication: %s", e)
-            defer.returnValue(None)
+            raise
 
     @defer.inlineCallbacks
     def register_user(self, localpart, name, email_address):
@@ -400,7 +400,7 @@ class LdapAuthProvider(object):
 
         except ldap3.core.exceptions.LDAPException as e:
             logger.warning("Error during LDAP authentication: %s", e)
-            defer.returnValue((False, None))
+            raise
 
     @defer.inlineCallbacks
     def _ldap_authenticated_search(self, server, password, filters, attributes=[]):
@@ -521,7 +521,7 @@ class LdapAuthProvider(object):
 
         except ldap3.core.exceptions.LDAPException as e:
             logger.warning("Error during LDAP authentication: %s", e)
-            defer.returnValue((False, None, None))
+            raise
 
 
 def _require_keys(config, required):
