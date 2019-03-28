@@ -241,6 +241,7 @@ class LdapAuthProvider(object):
                 server=server, password=password, filters=search_filter,
                 attributes=['givenname', 'cn'],
             )
+
             logger.debug(
                 'LDAP auth method authenticated search returned: '
                 '%s (conn: %s) (response: %s)',
@@ -248,20 +249,9 @@ class LdapAuthProvider(object):
                 conn,
                 response
             )
+
             if not result:
                 defer.returnValue(None)
-
-            try:
-                logger.info(
-                    "User authenticated against LDAP server: %s",
-                    conn
-                )
-            except NameError:
-                logger.warning(
-                    "Authentication method yielded no LDAP connection, "
-                    "aborting!"
-                )
-                raise
 
             # Extract the username from the search response from the LDAP server
             localpart = response["attributes"].get("cn", [""])[0]
@@ -430,6 +420,7 @@ class LdapAuthProvider(object):
             conn = yield threads.deferToThread(
                 ldap3.Connection,
                 server,
+                raise_exceptions=True,
                 self.ldap_bind_dn,
                 self.ldap_bind_password
             )
