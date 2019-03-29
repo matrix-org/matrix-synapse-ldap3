@@ -34,6 +34,29 @@ Example synapse config:
         #bind_password:
         #filter: "(objectClass=posixAccount)"
 
+If you would like to enable login/registration via email, or givenName/email
+binding upon registration, you need to enable search mode. An example config
+in search mode is provided below:
+
+.. code:: yaml
+
+   password_providers:
+    - module: "ldap_auth_provider.LdapAuthProvider"
+      config:
+        enabled: true
+        mode: "search"
+        uri: "ldap://ldap.example.com:389"
+        start_tls: true
+        base: "ou=users,dc=example,dc=com"
+        attributes:
+           uid: "cn"
+           mail: "email"
+           name: "givenName"
+        # Search auth if anonymous search not enabled
+        bind_dn: "cn=hacker,ou=svcaccts,dc=example,dc=com"
+        bind_password: "ch33kym0nk3y"
+        #filter: "(objectClass=posixAccount)"
+
 Troubleshooting and Debugging
 -----------------------------
 

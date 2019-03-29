@@ -109,7 +109,7 @@ class LdapAuthProvider(object):
                 if not result:
                     defer.returnValue(False)
             elif self.ldap_mode == LDAPMode.SEARCH:
-                filters = [("localpart", localpart)]
+                filters = [(self.ldap_attributes["uid"], localpart)]
                 result, conn, _ = yield self._ldap_authenticated_search(
                     server=server, password=password, filters=filters
                 )
@@ -143,66 +143,40 @@ class LdapAuthProvider(object):
             # check if user with user_id exists
             if (yield self.account_handler.check_user_exists(user_id)):
                 # exists, authentication complete
-                yield threads.deferToThread(conn.unbind)
+                if hasattr(conn, "unbind"):
+                    yield threads.deferToThread(conn.unbind)
                 defer.returnValue(True)
 
             else:
-                # does not exist, fetch metadata for account creation from
-                # existing ldap connection
-                query = "({prop}={value})".format(
-                    prop=self.ldap_attributes['uid'],
-                    value=localpart
-                )
+                # does not exist, register
+                if self.ldap_mode == LDAPMode.SEARCH:
+                    # search enabled, fetch metadata for account creation from
+                    # existing ldap connection
+                    filters = [(self.ldap_attributes['uid'], localpart)]
 
-                if self.ldap_mode == LDAPMode.SEARCH and self.ldap_filter:
-                    query = "(&{filter}{user_filter})".format(
-                        filter=query,
-                        user_filter=self.ldap_filter
+                    result, conn, response = yield self._ldap_authenticated_search(
+                        server=server, password=password, filters=filters,
+                        attributes = [
+                            self.ldap_attributes['name'],
+                            self.ldap_attributes['mail']
+                        ]
                     )
-                logger.debug(
-                    "ldap registration filter: %s",
-                    query
-                )
 
-                yield threads.deferToThread(
-                    conn.search,
-                    search_base=self.ldap_base,
-                    search_filter=query,
-                    attributes=[
-                        self.ldap_attributes['name'],
-                        self.ldap_attributes['mail']
-                    ]
-                )
+                    # These results will always return an array
+                    givenName = response["attributes"].get(self.ldap_attributes["name"], [localpart])
+                    givenName = givenName[0] if len(givenName) == 1 else localpart
 
-                responses = [
-                    response
-                    for response
-                    in conn.response
-                    if response['type'] == 'searchResEntry'
-                ]
-
-                if len(responses) == 1:
-                    attrs = responses[0]['attributes']
-                    name = attrs[self.ldap_attributes['name']][0]
-                    try:
-                        mail = attrs[self.ldap_attributes['mail']][0]
-                    except (KeyError, IndexError):
-                        mail = None
-
-                    # create account
-                    yield self.register_user(localpart, name, mail)
-
-                    defer.returnValue(True)
+                    mail = response["attributes"].get("mail", [None])
+                    mail = mail[0] if len(mail) == 1 else None
                 else:
-                    if len(responses) == 0:
-                        logger.warning("LDAP registration failed, no result.")
-                    else:
-                        logger.warning(
-                            "LDAP registration failed, too many results (%s)",
-                            len(responses)
-                        )
+                    # search disabled, register account with basic information
+                    givenName = localpart
+                    mail = None
 
-                    defer.returnValue(False)
+                # Register the user
+                user_id = yield self.register_user(localpart, givenName, mail)
+
+                defer.returnValue(user_id)
 
             defer.returnValue(False)
 
@@ -223,10 +197,14 @@ class LdapAuthProvider(object):
                 user_id (str|None): ID of the user if authentication
                     successful. None otherwise.
         """
+        if self.ldap_mode != LDAPMode.SEARCH:
+            logger.warn("3PID LDAP login/register attempted but LDAP search mode "
+                        "not enabled. Bailing.")
+            defer.returnValue(None)
 
         # We currently only support email
         if medium != "email":
-            return
+            defer.returnValue(None)
 
         # Talk to LDAP and check if this email/password combo is correct
         try:
@@ -236,10 +214,13 @@ class LdapAuthProvider(object):
                 self.ldap_uri
             )
 
-            search_filter = [("mail", address)]
+            search_filter = [(self.ldap_attributes["mail"], address)]
             result, conn, response = yield self._ldap_authenticated_search(
                 server=server, password=password, filters=search_filter,
-                attributes=['givenname', 'cn'],
+                attributes=[
+                    self.ldap_attributes["name"],
+                    self.ldap_attributes["uid"]
+                ]
             )
 
             logger.debug(
@@ -254,8 +235,11 @@ class LdapAuthProvider(object):
                 defer.returnValue(None)
 
             # Extract the username from the search response from the LDAP server
-            localpart = response["attributes"].get("cn", [""])[0]
-            givenName = response["attributes"].get("givenName", [localpart])[0]
+            localpart = response["attributes"].get(self.ldap_attributes["uid"], [None])
+            localpart = localpart[0] if len(localpart) == 1 else None
+
+            givenName = response["attributes"].get(self.ldap_attributes["name"], [localpart])
+            givenName = givenName[0] if len(givenName) == 1 else localpart
 
             # Register the user
             user_id = yield self.register_user(localpart, givenName, address)
@@ -285,10 +269,13 @@ class LdapAuthProvider(object):
             # exists, authentication complete
             defer.returnValue(user_id)
 
+        # register an email address if one exists
+        emails = [email_address] if email_address is not None else []
+
         # create account
         user_id, access_token = (
             yield self.account_handler.register(
-                localpart=localpart, displayname=name, emails=[email_address],
+                localpart=localpart, displayname=name, emails=emails,
             )
         )
 
