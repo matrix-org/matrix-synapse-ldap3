@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2016 OpenMarket Ltd
+# Copyright 2019 New Vector Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import logging
 logging.basicConfig()
 
 
-class LdapSimpleTestCase(unittest.TestCase):
+class LdapSearchTestCase(unittest.TestCase):
 
     def ldap_search_config(self, server_port):
         """A config for the auth provider that supports searching"""
@@ -32,14 +32,14 @@ class LdapSimpleTestCase(unittest.TestCase):
             "enabled": True,
             "mode": "search",
             "uri": "ldap://localhost:%d" % server_port,
-            "base": "ou=people,dc=example,dc=org",
+            "base": "cn=bob,ou=people,dc=example,dc=org",
             "attributes": {
                 "uid": "cn",
                 "name": "gn",
                 "mail": "mail",
             },
-            "bind_dn": "cn=admin,dc=example,dc=org",
-            "bind_password": "password",
+            "bind_dn": "cn=bob,dc=example,dc=org",
+            "bind_password": "secret",
         }
 
     @defer.inlineCallbacks
@@ -76,6 +76,7 @@ class LdapSimpleTestCase(unittest.TestCase):
                 ),
             )
 
+            print("Credentials:", provider.ldap_bind_dn, provider.ldap_bind_password)
             result = yield provider.check_3pid_auth("email", email, "secret")
             self.assertEquals(result, user_id)
             self.assertItemsEqual(
