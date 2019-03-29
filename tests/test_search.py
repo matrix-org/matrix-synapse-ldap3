@@ -24,7 +24,7 @@ import logging
 logging.basicConfig()
 
 
-class LdapSimpleTestCase(unittest.TestCase):
+class LdapSearchTestCase(unittest.TestCase):
 
     def ldap_search_config(self, server_port):
         """A config for the auth provider that supports searching"""
@@ -38,8 +38,8 @@ class LdapSimpleTestCase(unittest.TestCase):
                 "name": "gn",
                 "mail": "mail",
             },
-            "bind_dn": "cn=admin,dc=example,dc=org",
-            "bind_password": "password",
+            "bind_dn": "cn=jsmith,dc=example,dc=org",
+            "bind_password": "eekretsay",
         }
 
     @defer.inlineCallbacks
