@@ -239,10 +239,14 @@ class LdapAuthProvider(object):
                 defer.returnValue(None)
 
             # Extract the username from the search response from the LDAP server
-            localpart = response["attributes"].get(self.ldap_attributes["uid"], [None])
+            localpart = response["attributes"].get(
+                self.ldap_attributes["uid"], [None]
+            )
             localpart = localpart[0] if len(localpart) == 1 else None
 
-            givenName = response["attributes"].get(self.ldap_attributes["name"], [localpart])
+            givenName = response["attributes"].get(
+                self.ldap_attributes["name"], [localpart]
+            )
             givenName = givenName[0] if len(givenName) == 1 else localpart
 
             # Register the user
