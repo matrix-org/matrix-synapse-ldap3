@@ -26,12 +26,12 @@ logging.basicConfig()
 
 class LdapSimpleTestCase(unittest.TestCase):
 
-    def ldap_search_config(self):
+    def ldap_search_config(self, server_port):
         """A config for the auth provider that supports searching"""
         return {
             "enabled": True,
             "mode": "search",
-            "uri": "ldap://localhost:%d" % server.listener.getHost().port,
+            "uri": "ldap://localhost:%d" % server_port,
             "base": "ou=people,dc=example,dc=org",
             "attributes": {
                 "uid": "cn",
@@ -49,7 +49,6 @@ class LdapSimpleTestCase(unittest.TestCase):
         with server:
             user_id = "@bob:example.com"
             email = "bob@example.com"
-            name = "bob"
 
             account_handler = Mock(spec_set=["register", "check_user_exists"])
             account_handler.check_user_exists.return_value = False
@@ -72,7 +71,9 @@ class LdapSimpleTestCase(unittest.TestCase):
             account_handler.check_user_exists.return_value = False
             account_handler.register.return_value = (user_id, "accesstoken")
             provider = create_auth_provider(
-                server, account_handler, self.ldap_search_config(),
+                server, account_handler, self.ldap_search_config(
+                    server.listener.getHost().port,
+                ),
             )
 
             result = yield provider.check_3pid_auth("email", email, "secret")
