@@ -420,9 +420,9 @@ class LdapAuthProvider(object):
             conn = yield threads.deferToThread(
                 ldap3.Connection,
                 server,
-                raise_exceptions=True,
                 self.ldap_bind_dn,
-                self.ldap_bind_password
+                self.ldap_bind_password,
+                raise_exceptions=True,
             )
             logger.debug(
                 "Established LDAP connection in search mode: %s",
