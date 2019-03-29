@@ -156,15 +156,19 @@ class LdapAuthProvider(object):
 
                     result, conn, response = yield self._ldap_authenticated_search(
                         server=server, password=password, filters=filters,
-                        attributes = [
+                        attributes=[
                             self.ldap_attributes['name'],
                             self.ldap_attributes['mail']
                         ]
                     )
 
                     # These results will always return an array
-                    givenName = response["attributes"].get(self.ldap_attributes["name"], [localpart])
-                    givenName = givenName[0] if len(givenName) == 1 else localpart
+                    givenName = response["attributes"].get(
+                        self.ldap_attributes["name"], [localpart]
+                    )
+                    givenName = (
+                        givenName[0] if len(givenName) == 1 else localpart
+                    )
 
                     mail = response["attributes"].get("mail", [None])
                     mail = mail[0] if len(mail) == 1 else None
