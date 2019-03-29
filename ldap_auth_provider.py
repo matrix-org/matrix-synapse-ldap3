@@ -202,8 +202,8 @@ class LdapAuthProvider(object):
                     successful. None otherwise.
         """
         if self.ldap_mode != LDAPMode.SEARCH:
-            logger.warn("3PID LDAP login/register attempted but LDAP search mode "
-                        "not enabled. Bailing.")
+            logger.debug("3PID LDAP login/register attempted but LDAP search mode "
+                         "not enabled. Bailing.")
             defer.returnValue(None)
 
         # We currently only support email
