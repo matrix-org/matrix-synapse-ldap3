@@ -112,18 +112,21 @@ def create_ldap_server():
     defer.returnValue(_LdapServer(listener))
 
 
-def create_auth_provider(server, account_handler):
+def create_auth_provider(server, account_handler, config=None):
     "Creates an LdapAuthProvider from an LDAP server and a mock account_handler"
 
-    config = LdapAuthProvider.parse_config({
-        "enabled": True,
-        "uri": "ldap://localhost:%d" % server.listener.getHost().port,
-        "base": "ou=people,dc=example,dc=org",
-        "attributes": {
-            "uid": "cn",
-            "name": "gn",
-            "mail": "mail",
-        },
-    })
+    if config:
+        config = LdapAuthProvider.parse_config(config)
+    else:
+        config = LdapAuthProvider.parse_config({
+            "enabled": True,
+            "uri": "ldap://localhost:%d" % server.listener.getHost().port,
+            "base": "ou=people,dc=example,dc=org",
+            "attributes": {
+                "uid": "cn",
+                "name": "gn",
+                "mail": "mail",
+            },
+        })
 
     return LdapAuthProvider(config, account_handler=account_handler)
