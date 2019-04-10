@@ -20,6 +20,9 @@ import ldap3
 import ldap3.core.exceptions
 
 import logging
+import synapse
+
+from pkg_resources import parse_version
 
 
 __version__ = "0.1.3"
@@ -281,11 +284,21 @@ class LdapAuthProvider(object):
         emails = [email_address] if email_address is not None else []
 
         # create account
-        user_id, access_token = (
-            yield self.account_handler.register(
-                localpart=localpart, displayname=name, emails=emails,
+        # check if we're running a version of synapse that supports binding emails
+        # from password providers
+        if parse_version(synapse.__version__) <= parse_version("0.99.3"):
+            user_id, access_token = (
+                yield self.account_handler.register(
+                    localpart=localpart, displayname=name,
+                )
             )
-        )
+        else:
+            # If Synapse has support, bind emails
+            user_id, access_token = (
+                yield self.account_handler.register(
+                    localpart=localpart, displayname=name, emails=emails,
+                )
+            )
 
         logger.info(
             "Registration based on LDAP data was successful: %s",

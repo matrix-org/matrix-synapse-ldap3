@@ -49,6 +49,9 @@ setup(
         "ldap3>=2.6",
         "service_identity",
     ],
+    test_require=[
+        "matrix-synapse",
+    ],
     long_description=read_file(("README.rst",)),
     classifiers=[
         'Development Status :: 4 - Beta',
