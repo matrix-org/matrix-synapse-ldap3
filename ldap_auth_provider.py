@@ -159,10 +159,6 @@ class LdapAuthProvider(object):
 
                     result, conn, response = yield self._ldap_authenticated_search(
                         server=server, password=password, filters=filters,
-                        attributes=[
-                            self.ldap_attributes['name'],
-                            self.ldap_attributes['mail']
-                        ]
                     )
 
                     # These results will always return an array
@@ -224,10 +220,6 @@ class LdapAuthProvider(object):
             search_filter = [(self.ldap_attributes["mail"], address)]
             result, conn, response = yield self._ldap_authenticated_search(
                 server=server, password=password, filters=search_filter,
-                attributes=[
-                    self.ldap_attributes["name"],
-                    self.ldap_attributes["uid"]
-                ]
             )
 
             logger.debug(
@@ -401,27 +393,24 @@ class LdapAuthProvider(object):
             raise
 
     @defer.inlineCallbacks
-    def _ldap_authenticated_search(self, server, password, filters, attributes=[]):
-        """ Attempt to login with the preconfigured bind_dn
-            and then continue searching and filtering within
-            the base_dn
+    def _ldap_authenticated_search(self, server, password, filters):
+        """Attempt to login with the preconfigured bind_dn and then continue
+        searching and filtering within the base_dn.
 
+        Fetches the attributes that correspond to uid/name/mail as defined in
+        the config.
+
+        Args:
             server (str): The LDAP server to connect to.
             password (str): The user's password.
             filters (List[Tuple[str,str]]): A list of tuples of key/value
                 pairs to filter the LDAP search by.
-            attributes (List[str]): A list of strings of attribute names to
-                return.
 
-            Returns (True, LDAP3Connection)
-                if a single matching DN within the base was found
-                that matched the filter expression, and with which
-                a successful bind was achieved
-
-                The LDAP3Connection returned is the instance that was used to
-                verify the password not the one using the configured bind_dn.
-            Returns (False, None)
-                if an error occured
+        Returns:
+            Deferred[tuple[bool, LDAP3Connection, response]]: Returns a 3-tuple
+            where first field is whether a *single* entry was found, the second
+            is the open connection bound to the found user and the final field
+            is the LDAP entry of the found entry.
         """
 
         try:
@@ -478,7 +467,11 @@ class LdapAuthProvider(object):
                 conn.search,
                 search_base=self.ldap_base,
                 search_filter=query,
-                attributes=attributes,
+                attributes=[
+                    self.ldap_attributes['uid'],
+                    self.ldap_attributes['name'],
+                    self.ldap_attributes['mail'],
+                ],
             )
 
             responses = [
