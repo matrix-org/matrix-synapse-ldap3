@@ -1,0 +1,7 @@
+
+[run]
+branch = True
+include = ldap_auth_provider.py
+
+[report]
+precision = 2

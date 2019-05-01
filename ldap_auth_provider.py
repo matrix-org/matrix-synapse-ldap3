@@ -37,7 +37,7 @@ try:
         LDAP_AUTH_SIMPLE = ldap3.AUTH_SIMPLE
     except AttributeError:
         LDAP_AUTH_SIMPLE = ldap3.SIMPLE
-except ImportError:
+except ImportError:  # pragma: no cover
     ldap3 = None
     pass
 
@@ -58,7 +58,7 @@ class LdapAuthProvider(object):
     def __init__(self, config, account_handler):
         self.account_handler = account_handler
 
-        if not ldap3:
+        if not ldap3:  # pragma: no cover
             raise RuntimeError(
                 'Missing ldap3 library. '
                 'This is required for LDAP Authentication.'
@@ -124,7 +124,7 @@ class LdapAuthProvider(object):
                 )
                 if not result:
                     defer.returnValue(False)
-            else:
+            else:  # pragma: no cover
                 raise RuntimeError(
                     'Invalid LDAP mode specified: {mode}'.format(
                         mode=self.ldap_mode
@@ -136,7 +136,7 @@ class LdapAuthProvider(object):
                     "User authenticated against LDAP server: %s",
                     conn
                 )
-            except NameError:
+            except NameError:  # pragma: no cover
                 logger.warning(
                     "Authentication method yielded no LDAP connection, "
                     "aborting!"
