@@ -497,11 +497,11 @@ class LdapAuthProvider(object):
                 # Note: do not use rebind(), for some reason it did not verify
                 #       the password for me!
                 yield threads.deferToThread(conn.unbind)
-                result, _ = yield self._ldap_simple_bind(
+                result, conn = yield self._ldap_simple_bind(
                     server=server, bind_dn=user_dn, password=password
                 )
 
-                defer.returnValue((result, None, responses[0]))
+                defer.returnValue((result, conn, responses[0]))
             else:
                 # BAD: found 0 or > 1 results, abort!
                 if len(responses) == 0:
