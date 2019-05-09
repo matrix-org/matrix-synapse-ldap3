@@ -1,9 +1,9 @@
-.coverage
-.tox/
+/.coverage
+/.tox/
 __pycache__/
 *.egg-info/
 *.pyc
-build/
-dist/
-_trial_temp/
-htmlcov/
+/build/
+/dist/
+/_trial_temp/
+/htmlcov/
