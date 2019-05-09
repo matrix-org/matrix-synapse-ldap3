@@ -410,7 +410,8 @@ class LdapAuthProvider(object):
             Deferred[tuple[bool, LDAP3Connection, response]]: Returns a 3-tuple
             where first field is whether a *single* entry was found, the second
             is the open connection bound to the found user and the final field
-            is the LDAP entry of the found entry.
+            is the LDAP entry of the found entry. If first field is False then
+            second and third field will both be None.
         """
 
         try:
