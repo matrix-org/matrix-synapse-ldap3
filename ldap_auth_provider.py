@@ -37,7 +37,7 @@ try:
         LDAP_AUTH_SIMPLE = ldap3.AUTH_SIMPLE
     except AttributeError:
         LDAP_AUTH_SIMPLE = ldap3.SIMPLE
-except ImportError:
+except ImportError:  # pragma: no cover
     ldap3 = None
     pass
 
@@ -58,7 +58,7 @@ class LdapAuthProvider(object):
     def __init__(self, config, account_handler):
         self.account_handler = account_handler
 
-        if not ldap3:
+        if not ldap3:  # pragma: no cover
             raise RuntimeError(
                 'Missing ldap3 library. '
                 'This is required for LDAP Authentication.'
@@ -124,7 +124,7 @@ class LdapAuthProvider(object):
                 )
                 if not result:
                     defer.returnValue(False)
-            else:
+            else:  # pragma: no cover
                 raise RuntimeError(
                     'Invalid LDAP mode specified: {mode}'.format(
                         mode=self.ldap_mode
@@ -136,7 +136,7 @@ class LdapAuthProvider(object):
                     "User authenticated against LDAP server: %s",
                     conn
                 )
-            except NameError:
+            except NameError:  # pragma: no cover
                 logger.warning(
                     "Authentication method yielded no LDAP connection, "
                     "aborting!"
@@ -159,10 +159,6 @@ class LdapAuthProvider(object):
 
                     result, conn, response = yield self._ldap_authenticated_search(
                         server=server, password=password, filters=filters,
-                        attributes=[
-                            self.ldap_attributes['name'],
-                            self.ldap_attributes['mail']
-                        ]
                     )
 
                     # These results will always return an array
@@ -224,10 +220,6 @@ class LdapAuthProvider(object):
             search_filter = [(self.ldap_attributes["mail"], address)]
             result, conn, response = yield self._ldap_authenticated_search(
                 server=server, password=password, filters=search_filter,
-                attributes=[
-                    self.ldap_attributes["name"],
-                    self.ldap_attributes["uid"]
-                ]
             )
 
             logger.debug(
@@ -401,27 +393,25 @@ class LdapAuthProvider(object):
             raise
 
     @defer.inlineCallbacks
-    def _ldap_authenticated_search(self, server, password, filters, attributes=[]):
-        """ Attempt to login with the preconfigured bind_dn
-            and then continue searching and filtering within
-            the base_dn
+    def _ldap_authenticated_search(self, server, password, filters):
+        """Attempt to login with the preconfigured bind_dn and then continue
+        searching and filtering within the base_dn.
 
+        Fetches the attributes that correspond to uid/name/mail as defined in
+        the config.
+
+        Args:
             server (str): The LDAP server to connect to.
             password (str): The user's password.
             filters (List[Tuple[str,str]]): A list of tuples of key/value
                 pairs to filter the LDAP search by.
-            attributes (List[str]): A list of strings of attribute names to
-                return.
 
-            Returns (True, LDAP3Connection)
-                if a single matching DN within the base was found
-                that matched the filter expression, and with which
-                a successful bind was achieved
-
-                The LDAP3Connection returned is the instance that was used to
-                verify the password not the one using the configured bind_dn.
-            Returns (False, None)
-                if an error occured
+        Returns:
+            Deferred[tuple[bool, LDAP3Connection, response]]: Returns a 3-tuple
+            where first field is whether a *single* entry was found, the second
+            is the open connection bound to the found user and the final field
+            is the LDAP entry of the found entry. If first field is False then
+            second and third field will both be None.
         """
 
         try:
@@ -478,7 +468,11 @@ class LdapAuthProvider(object):
                 conn.search,
                 search_base=self.ldap_base,
                 search_filter=query,
-                attributes=attributes,
+                attributes=[
+                    self.ldap_attributes['uid'],
+                    self.ldap_attributes['name'],
+                    self.ldap_attributes['mail'],
+                ],
             )
 
             responses = [
@@ -497,11 +491,11 @@ class LdapAuthProvider(object):
                 # Note: do not use rebind(), for some reason it did not verify
                 #       the password for me!
                 yield threads.deferToThread(conn.unbind)
-                result, _ = yield self._ldap_simple_bind(
+                result, conn = yield self._ldap_simple_bind(
                     server=server, bind_dn=user_dn, password=password
                 )
 
-                defer.returnValue((result, None, responses[0]))
+                defer.returnValue((result, conn, responses[0]))
             else:
                 # BAD: found 0 or > 1 results, abort!
                 if len(responses) == 0:
