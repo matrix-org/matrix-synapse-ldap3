@@ -32,6 +32,7 @@ Example synapse config:
            name: "givenName"
         #bind_dn:
         #bind_password:
+        #bind_pattern:
         #filter: "(objectClass=posixAccount)"
 
 If you would like to enable login/registration via email, or givenName/email
@@ -56,6 +57,8 @@ in search mode is provided below:
         bind_dn: "cn=hacker,ou=svcaccts,dc=example,dc=com"
         bind_password: "ch33kym0nk3y"
         #filter: "(objectClass=posixAccount)"
+        # Alternatively, simple binding with a custom bind pattern:
+        #bind_pattern: "WORKGROUP\\%s"
 
 Troubleshooting and Debugging
 -----------------------------
