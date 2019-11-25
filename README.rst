@@ -57,6 +57,19 @@ in search mode is provided below:
         bind_password: "ch33kym0nk3y"
         #filter: "(objectClass=posixAccount)"
 
+If you want to use the local part of email-id as username in synapse.
+configure 
+
+.. code:: yaml
+
+   attributes:
+     uid: "email"
+     mail: "email"
+     name: "givenName"
+
+for eg:email = ``local_part@domain.com`` then userid on matrix will be
+``@local_part:matrix.com``.
+
 Troubleshooting and Debugging
 -----------------------------
 

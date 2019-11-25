@@ -265,6 +265,13 @@ class LdapAuthProvider(object):
         Returns:
             user_id (str): User ID of the newly registered user.
         """
+        if self.ldap_attributes["uid"] == self.ldap_attributes["mail"]:
+            localpart = localpart.split('@')[0]
+            logger.info(
+                "Created username \"%s\" from email",
+                localpart,
+            )
+
         # Get full user id from localpart
         user_id = self.account_handler.get_qualified_user_id(localpart)
 
