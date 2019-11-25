@@ -4,7 +4,7 @@ Synapse LDAP Auth Provider
 Allows synapse to use LDAP as a password provider.
 
 This allows users to log in to synapse with their username and password from an
-LDAP server. There is also mxisd (https://github.com/kamax-io/mxisd) (3rd party)
+LDAP server. There is also ma1sd (https://github.com/ma1uta/ma1sd) (3rd party)
 that offers more fully-featured integration.
 
 Installation
