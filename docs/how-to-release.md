@@ -27,7 +27,8 @@ Ensure you have access to the `twine` command.
 
 1. Run `python setup.py sdist` to build the package
 
-1. `twine upload dist/matrix-synapse-ldap3-X.Y.Z.tar.gz` to upload the package to PyPi.
+1. `twine upload dist/matrix-synapse-ldap3-X.Y.Z.tar.gz` to upload the package
+   to PyPi.
 
 ## Uploading debian packages
 
