@@ -6,3 +6,4 @@ include requirements.txt
 include .coveragerc
 include .codecov.yml
 recursive-include tests *.py
+recursive-include docs *.md
