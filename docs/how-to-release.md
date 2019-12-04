@@ -2,7 +2,7 @@
 
 Releasing `matrix-synapse-ldap3` involves bumping the version number, creating
 a new tag on Github, then uploading release packages to
-[PyPi](https://pypi.org) and Matrix.org's debian repos.
+[PyPi](https://pypi.org).
 
 You will need push access to this repo as well as an account on PyPi with push
 access to the
@@ -29,7 +29,3 @@ Ensure you have access to the `twine` command.
 
 1. `twine upload dist/matrix-synapse-ldap3-X.Y.Z.tar.gz` to upload the package
    to PyPi.
-
-## Uploading debian packages
-
-TODO
