@@ -5,12 +5,15 @@ from twisted.python.components import registerAdapter
 from ldaptor.inmemory import fromLDIFFile
 from ldaptor.interfaces import IConnectedLDAPEntry
 from ldaptor.protocols.ldap.ldapserver import LDAPServer
-from cStringIO import StringIO
+try:
+    from cStringIO import StringIO as BytesIO
+except ImportError:
+    from io import BytesIO
 
 from ldap_auth_provider import LdapAuthProvider
 
 
-LDIF = """\
+LDIF = b"""\
 dn: dc=org
 dc: org
 objectClass: dcObject
@@ -51,7 +54,7 @@ userPassword: {SSHA}mtIQXzjeID+j1LdjduYB1kjaHPgup8UnK4ofgw==
 
 @defer.inlineCallbacks
 def _create_db():
-    f = StringIO(LDIF)
+    f = BytesIO(LDIF)
     db = yield fromLDIFFile(f)
     f.close()
     defer.returnValue(db)
