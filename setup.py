@@ -41,6 +41,7 @@ def exec_file(path_segments, name):
 
 setup(
     name="matrix-synapse-ldap3",
+    url="https://github.com/matrix-org/matrix-synapse-ldap3",
     version=exec_file(("ldap_auth_provider.py",), "__version__"),
     py_modules=["ldap_auth_provider"],
     description="An LDAP3 auth provider for Synapse",
