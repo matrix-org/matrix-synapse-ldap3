@@ -65,7 +65,7 @@ class LdapAuthProvider(object):
             )
 
         self.ldap_mode = config.mode
-        self.ldap_uri = config.uri
+        self.ldap_uri = [config.uri] if isinstance(config.uri, str) else config.uri
         self.ldap_start_tls = config.start_tls
         self.ldap_base = config.base
         self.ldap_attributes = config.attributes
