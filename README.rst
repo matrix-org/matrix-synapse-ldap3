@@ -28,7 +28,7 @@ Example synapse config:
         base: "ou=users,dc=example,dc=com"
         attributes:
            uid: "cn"
-           mail: "email"
+           mail: "mail"
            name: "givenName"
         #bind_dn:
         #bind_password:
@@ -50,7 +50,7 @@ in search mode is provided below:
         base: "ou=users,dc=example,dc=com"
         attributes:
            uid: "cn"
-           mail: "email"
+           mail: "mail"
            name: "givenName"
         # Search auth if anonymous search not enabled
         bind_dn: "cn=hacker,ou=svcaccts,dc=example,dc=com"
