@@ -34,6 +34,28 @@ Example synapse config:
         #bind_password:
         #filter: "(objectClass=posixAccount)"
 
+If you would like to specify more than one LDAP server for HA, you can provide uri parameter with a list.
+Default HA strategy of ldap3.ServerPool is employed, so first available server is used.
+
+.. code:: yaml
+
+   password_providers:
+    - module: "ldap_auth_provider.LdapAuthProvider"
+      config:
+        enabled: true
+        uri:
+           - "ldap://ldap1.example.com:389"
+           - "ldap://ldap2.example.com:389"
+        start_tls: true
+        base: "ou=users,dc=example,dc=com"
+        attributes:
+           uid: "cn"
+           mail: "email"
+           name: "givenName"
+        #bind_dn:
+        #bind_password:
+        #filter: "(objectClass=posixAccount)"
+
 If you would like to enable login/registration via email, or givenName/email
 binding upon registration, you need to enable search mode. An example config
 in search mode is provided below:
