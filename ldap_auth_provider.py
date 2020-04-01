@@ -65,7 +65,7 @@ class LdapAuthProvider(object):
             )
 
         self.ldap_mode = config.mode
-        self.ldap_uri = config.uri
+        self.ldap_uris = [config.uri] if isinstance(config.uri, str) else config.uri
         self.ldap_start_tls = config.start_tls
         self.ldap_base = config.base
         self.ldap_attributes = config.attributes
@@ -88,10 +88,12 @@ class LdapAuthProvider(object):
         localpart = user_id.split(":", 1)[0][1:]
 
         try:
-            server = ldap3.Server(self.ldap_uri, get_info=None)
+            server = ldap3.ServerPool(
+                [ldap3.Server(uri, get_info=None) for uri in self.ldap_uris],
+            )
             logger.debug(
                 "Attempting LDAP connection with %s",
-                self.ldap_uri
+                self.ldap_uris
             )
 
             if self.ldap_mode == LDAPMode.SIMPLE:
@@ -211,10 +213,12 @@ class LdapAuthProvider(object):
 
         # Talk to LDAP and check if this email/password combo is correct
         try:
-            server = ldap3.Server(self.ldap_uri, get_info=None)
+            server = ldap3.ServerPool(
+                [ldap3.Server(uri, get_info=None) for uri in self.ldap_uris],
+            )
             logger.debug(
                 "Attempting LDAP connection with %s",
-                self.ldap_uri
+                self.ldap_uris
             )
 
             search_filter = [(self.ldap_attributes["mail"], address)]
