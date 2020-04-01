@@ -88,7 +88,9 @@ class LdapAuthProvider(object):
         localpart = user_id.split(":", 1)[0][1:]
 
         try:
-            server = ldap3.ServerPool([ldap3.Server(uri, get_info=None) for uri in self.ldap_uris])
+            server = ldap3.ServerPool(
+                [ldap3.Server(uri, get_info=None) for uri in self.ldap_uris],
+            )
             logger.debug(
                 "Attempting LDAP connection with %s",
                 self.ldap_uris
@@ -211,7 +213,9 @@ class LdapAuthProvider(object):
 
         # Talk to LDAP and check if this email/password combo is correct
         try:
-            server = ldap3.ServerPool([ldap3.Server(uri, get_info=None) for uri in self.ldap_uris])
+            server = ldap3.ServerPool(
+                [ldap3.Server(uri, get_info=None) for uri in self.ldap_uris],
+            )
             logger.debug(
                 "Attempting LDAP connection with %s",
                 self.ldap_uris
