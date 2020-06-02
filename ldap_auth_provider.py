@@ -19,6 +19,8 @@ from twisted.internet import defer, threads
 import ldap3
 import ldap3.core.exceptions
 
+import ssl
+
 import logging
 import synapse
 
@@ -88,8 +90,9 @@ class LdapAuthProvider(object):
         localpart = user_id.split(":", 1)[0][1:]
 
         try:
+            tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
             server = ldap3.ServerPool(
-                [ldap3.Server(uri, get_info=None) for uri in self.ldap_uris],
+                [ldap3.Server(uri, get_info=None, tls=tls) for uri in self.ldap_uris],
             )
             logger.debug(
                 "Attempting LDAP connection with %s",
