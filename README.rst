@@ -9,8 +9,9 @@ that offers more fully-featured integration.
 
 Installation
 ------------
-- Via deb package `python-matrix-synapse-ldap3` available in the same repo as the synapse package
-- Via python's package manager: `pip install matrix-synapse-ldap3`
+- Included as standard in the deb packages and docker images from matrix.org.
+- If you installed into a virtualenv: `pip install matrix-synapse-ldap3`.
+- For other installation mechanisms, see the documentation provided by the maintainer.
 
 Usage
 -----
