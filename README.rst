@@ -80,6 +80,50 @@ in search mode is provided below:
         bind_password: "ch33kym0nk3y"
         #filter: "(objectClass=posixAccount)"
 
+Active Directory forest accounts are also supported with custom
+separator (`=` or `/`) in the following form: `login<separator>domain`.
+
+Please note that common domain separators `@` and `\\` can not be used in Matrix
+User Indentifiers (https://matrix.org/docs/spec/appendices#user-identifiers)
+and `/` separator is used by default.
+
+Let's say you have several domains in example.com forest:
+
+.. code:: yaml
+
+   password_providers:
+    - module: "ldap_auth_provider.LdapAuthProvider"
+      config:
+        enabled: true
+        mode: "search"
+        uri: "ldap://main.example.com:389"
+        base: "dc=example,dc=com"
+        # Must be true for this feature to work
+        ad_forest: true
+        # Optional. Users from this domain may login
+        # without specifying domain part
+        default_domain: main.example.com
+        # Optional. Default /
+        mxid_domain_separator: /
+        attributes:
+           # This must be set to userPrincipalName
+           # when ad_forest is true
+           uid: "userPrincipalName"
+           mail: "mail"
+           name: "givenName"
+        bind_dn: "cn=hacker,ou=svcaccts,dc=example,dc=com"
+        bind_password: "ch33kym0nk3y"
+        filter: "(objectClass=user)"
+
+With this configuration you can use logins:
+
+- `someuser/main.example.com` or `someuser`
+
+  to login as `someuser` in domain `main.example.com`
+- `someuser2/second.example.com`
+
+  to login as `someuser2` in domain `second.example.com`
+
 Troubleshooting and Debugging
 -----------------------------
 

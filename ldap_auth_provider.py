@@ -76,6 +76,11 @@ class LdapAuthProvider(object):
             self.ldap_bind_password = config.bind_password
             self.ldap_filter = config.filter
 
+        self.ldap_ad_forest = config.ad_forest
+        if self.ldap_ad_forest:
+            self.ldap_default_domain = config.default_domain
+            self.ldap_separator = config.mxid_domain_separator
+
     @defer.inlineCallbacks
     def check_password(self, user_id, password):
         """ Attempt to authenticate a user against an LDAP Server
@@ -88,6 +93,20 @@ class LdapAuthProvider(object):
             defer.returnValue(False)
         # user_id is of the form @foo:bar.com
         localpart = user_id.split(":", 1)[0][1:]
+        uid_value = localpart
+        default_givenName = localpart
+        if self.ldap_ad_forest:
+            login = localpart
+            domain = self.ldap_default_domain
+
+            if self.ldap_separator not in localpart:
+                if not self.ldap_default_domain:
+                    defer.returnValue(False)
+            else:
+                [login, domain] = localpart.rsplit(self.ldap_separator, 1)
+
+            uid_value = login + self.ldap_separator + domain
+            default_givenName = login
 
         try:
             tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
@@ -102,7 +121,7 @@ class LdapAuthProvider(object):
             if self.ldap_mode == LDAPMode.SIMPLE:
                 bind_dn = "{prop}={value},{base}".format(
                     prop=self.ldap_attributes['uid'],
-                    value=localpart,
+                    value=uid_value,
                     base=self.ldap_base
                 )
                 result, conn = yield self._ldap_simple_bind(
@@ -117,7 +136,7 @@ class LdapAuthProvider(object):
                 if not result:
                     defer.returnValue(False)
             elif self.ldap_mode == LDAPMode.SEARCH:
-                filters = [(self.ldap_attributes["uid"], localpart)]
+                filters = [(self.ldap_attributes["uid"], uid_value)]
                 result, conn, _ = yield self._ldap_authenticated_search(
                     server=server, password=password, filters=filters
                 )
@@ -160,7 +179,7 @@ class LdapAuthProvider(object):
                 if self.ldap_mode == LDAPMode.SEARCH:
                     # search enabled, fetch metadata for account creation from
                     # existing ldap connection
-                    filters = [(self.ldap_attributes['uid'], localpart)]
+                    filters = [(self.ldap_attributes['uid'], uid_value)]
 
                     result, conn, response = yield self._ldap_authenticated_search(
                         server=server, password=password, filters=filters,
@@ -171,14 +190,14 @@ class LdapAuthProvider(object):
                         self.ldap_attributes["name"], [localpart]
                     )
                     givenName = (
-                        givenName[0] if len(givenName) == 1 else localpart
+                        givenName[0] if len(givenName) == 1 else default_givenName
                     )
 
                     mail = response["attributes"].get("mail", [None])
                     mail = mail[0] if len(mail) == 1 else None
                 else:
                     # search disabled, register account with basic information
-                    givenName = localpart
+                    givenName = default_givenName
                     mail = None
 
                 # Register the user
@@ -245,6 +264,14 @@ class LdapAuthProvider(object):
                 self.ldap_attributes["uid"], [None]
             )
             localpart = localpart[0] if len(localpart) == 1 else None
+            if self.ldap_ad_forest and localpart:
+                [login, domain] = localpart.rsplit("@", 1)
+                localpart = login + self.ldap_separator + domain
+
+                if self.ldap_default_domain and domain == self.ldap_default_domain:
+                    user_id = self.account_handler.get_qualified_user_id(localpart)
+                    if (yield self.account_handler.check_user_exists(user_id)):
+                        localpart = login
 
             givenName = response["attributes"].get(
                 self.ldap_attributes["name"], [localpart]
@@ -346,6 +373,21 @@ class LdapAuthProvider(object):
             "name",
             "mail",
         ])
+
+        ldap_config.ad_forest = config.get("ad_forest", False)
+        if ldap_config.ad_forest:
+            if config["attributes"]["uid"].lower() != "userprincipalname":
+                raise Exception(
+                    "Only userPrincipalName is supported "
+                    "as uid property in ad_forest mode"
+                )
+
+            ldap_config.default_domain = config.get("default_domain", None)
+            ldap_config.mxid_domain_separator = config.get("mxid_domain_separator", "/")
+            if ldap_config.mxid_domain_separator not in ("=", "/"):
+                raise Exception(
+                    "Only = or / symbols supported as domain separator"
+                )
 
         return ldap_config
 
