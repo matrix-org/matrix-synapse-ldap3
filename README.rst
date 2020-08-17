@@ -80,12 +80,18 @@ in search mode is provided below:
         bind_password: "ch33kym0nk3y"
         #filter: "(objectClass=posixAccount)"
 
-Active Directory forest accounts are also supported with custom
-separator (`=` or `/`) in the following form: `login<separator>domain`.
+Active Directory forest support
+-------------------------------
 
-Please note that common domain separators `@` and `\\` can not be used in Matrix
-User Indentifiers (https://matrix.org/docs/spec/appendices#user-identifiers)
-and `/` separator is used by default.
+If the ``active_directory`` flag is set to ``true``, an Active Directory forest will be
+searched for the login details.
+In this mode, the user enters their login details in one of the forms:
+- ``<login>/<domain>``
+- ``<domain>\<login>``
+
+Despite of entered login it will be mapped to Matrix UID ``<login>/<domain>`` (The 
+normal domain separators, ``@`` and ``\\``, cannot be used in Matrix User Identifiers, so 
+``/`` is used instead).
 
 Let's say you have several domains in example.com forest:
 
@@ -99,12 +105,10 @@ Let's say you have several domains in example.com forest:
         uri: "ldap://main.example.com:389"
         base: "dc=example,dc=com"
         # Must be true for this feature to work
-        ad_forest: true
+        active_directory: true
         # Optional. Users from this domain may login
         # without specifying domain part
         default_domain: main.example.com
-        # Optional. Default /
-        mxid_domain_separator: /
         attributes:
            # This must be set to userPrincipalName
            # when ad_forest is true
@@ -115,14 +119,11 @@ Let's say you have several domains in example.com forest:
         bind_password: "ch33kym0nk3y"
         filter: "(objectClass=user)"
 
-With this configuration you can use logins:
+With this configuration the user can log in with either ``main.example.com\someuser``,
+``someuser/main.example.com`` or ``someuser``.
 
-- `someuser/main.example.com` or `someuser`
-
-  to login as `someuser` in domain `main.example.com`
-- `someuser2/second.example.com`
-
-  to login as `someuser2` in domain `second.example.com`
+Users of other domains in ``example.com`` forest can log in with ``domain\login``
+or ``login/domain``.
 
 Troubleshooting and Debugging
 -----------------------------
