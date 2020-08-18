@@ -279,7 +279,7 @@ class LdapAuthProvider(object):
                     self.ldap_default_domain
                     and domain.lower() == self.ldap_default_domain.lower()
                 ):
-                    user_id = self.account_handler.get_qualified_user_id(localpart)
+                    user_id = self.account_handler.get_qualified_user_id(login)
                     if (yield self.account_handler.check_user_exists(user_id)):
                         localpart = login
 
