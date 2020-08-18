@@ -103,7 +103,7 @@ class LdapAuthProvider(object):
         # It will differ from username in case ldap_active_directory option is enabled.
         uid_value = username
         # Used as default user name for account registration. It will be set to AD login
-        # in caseldap_active_directory option is enabled
+        # in case ldap_active_directory option is enabled
         default_givenName = username
         # Local part of Matrix UID which will be used in registration process
         localpart = username
