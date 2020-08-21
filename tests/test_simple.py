@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from twisted.internet import defer
 from twisted.trial import unittest
 
 from mock import Mock
@@ -24,7 +24,11 @@ logging.basicConfig()
 
 
 class LdapSimpleTestCase(unittest.TestCase):
-    async def setUp(self):
+    @defer.inlineCallbacks
+    def setUp(self):
+        yield defer.ensureDeferred(self.set_up_async())
+
+    async def set_up_async(self):
         self.ldap_server = await create_ldap_server()
         account_handler = Mock(spec_set=["check_user_exists"])
         account_handler.check_user_exists.return_value = True
@@ -64,7 +68,11 @@ class LdapSimpleTestCase(unittest.TestCase):
 
 
 class LdapSearchTestCase(unittest.TestCase):
-    async def setUp(self):
+    @defer.inlineCallbacks
+    def setUp(self):
+        yield defer.ensureDeferred(self.set_up_async())
+
+    async def set_up_async(self):
         self.ldap_server = await create_ldap_server()
         account_handler = Mock(spec_set=["check_user_exists"])
         account_handler.check_user_exists.return_value = True
