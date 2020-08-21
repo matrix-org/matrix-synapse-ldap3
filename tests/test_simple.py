@@ -50,22 +50,30 @@ class LdapSimpleTestCase(unittest.TestCase):
 
     @defer.inlineCallbacks
     def test_unknown_user(self):
-        result = yield defer.ensureDeferred(self.auth_provider.check_password("@non_existent:test", "password"))
+        result = yield defer.ensureDeferred(
+            self.auth_provider.check_password("@non_existent:test", "password")
+        )
         self.assertFalse(result)
 
     @defer.inlineCallbacks
     def test_incorrect_pwd(self):
-        result = yield defer.ensureDeferred(self.auth_provider.check_password("@bob:test", "wrong_password"))
+        result = yield defer.ensureDeferred(
+            self.auth_provider.check_password("@bob:test", "wrong_password")
+        )
         self.assertFalse(result)
 
     @defer.inlineCallbacks
     def test_correct_pwd(self):
-        result = yield defer.ensureDeferred(self.auth_provider.check_password("@bob:test", "secret"))
+        result = yield defer.ensureDeferred(
+            self.auth_provider.check_password("@bob:test", "secret")
+        )
         self.assertTrue(result)
 
     @defer.inlineCallbacks
     def test_no_pwd(self):
-        result = yield defer.ensureDeferred(self.auth_provider.check_password("@bob:test", ""))
+        result = yield defer.ensureDeferred(
+            self.auth_provider.check_password("@bob:test", "")
+        )
         self.assertFalse(result)
 
 
@@ -97,15 +105,21 @@ class LdapSearchTestCase(unittest.TestCase):
 
     @defer.inlineCallbacks
     def test_correct_pwd_search_mode(self):
-        result = yield defer.ensureDeferred(self.auth_provider.check_password("@bob:test", "secret"))
+        result = yield defer.ensureDeferred(
+            self.auth_provider.check_password("@bob:test", "secret")
+        )
         self.assertTrue(result)
 
     @defer.inlineCallbacks
     def test_incorrect_pwd_search_mode(self):
-        result = yield defer.ensureDeferred(self.auth_provider.check_password("@bob:test", "wrong_password"))
+        result = yield defer.ensureDeferred(
+            self.auth_provider.check_password("@bob:test", "wrong_password")
+        )
         self.assertFalse(result)
 
     @defer.inlineCallbacks
     def test_unknown_user_search_mode(self):
-        result = yield defer.ensureDeferred(self.auth_provider.check_password("@foobar:test", "some_password"))
+        result = yield defer.ensureDeferred(
+            self.auth_provider.check_password("@foobar:test", "some_password")
+        )
         self.assertFalse(result)
