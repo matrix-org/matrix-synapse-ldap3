@@ -1,3 +1,5 @@
+from typing import Any
+
 from twisted.internet.endpoints import serverFromString
 from twisted.internet.protocol import ServerFactory
 from twisted.internet import reactor
@@ -134,3 +136,7 @@ def create_auth_provider(server, account_handler, config=None):
         })
 
     return LdapAuthProvider(config, account_handler=account_handler)
+
+
+async def make_awaitable(result: Any) -> Any:
+    return result
