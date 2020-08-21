@@ -14,7 +14,6 @@
 # limitations under the License.
 
 from twisted.trial import unittest
-from twisted.internet import defer
 
 from mock import Mock
 
@@ -25,9 +24,8 @@ logging.basicConfig()
 
 
 class LdapSimpleTestCase(unittest.TestCase):
-    @defer.inlineCallbacks
-    def setUp(self):
-        self.ldap_server = yield create_ldap_server()
+    async def setUp(self):
+        self.ldap_server = await create_ldap_server()
         account_handler = Mock(spec_set=["check_user_exists"])
         account_handler.check_user_exists.return_value = True
 
@@ -48,31 +46,26 @@ class LdapSimpleTestCase(unittest.TestCase):
     def tearDown(self):
         self.ldap_server.close()
 
-    @defer.inlineCallbacks
-    def test_unknown_user(self):
-        result = yield self.auth_provider.check_password("@non_existent:test", "password")
+    async def test_unknown_user(self):
+        result = await self.auth_provider.check_password("@non_existent:test", "password")
         self.assertFalse(result)
 
-    @defer.inlineCallbacks
-    def test_incorrect_pwd(self):
-        result = yield self.auth_provider.check_password("@bob:test", "wrong_password")
+    async def test_incorrect_pwd(self):
+        result = await self.auth_provider.check_password("@bob:test", "wrong_password")
         self.assertFalse(result)
 
-    @defer.inlineCallbacks
-    def test_correct_pwd(self):
-        result = yield self.auth_provider.check_password("@bob:test", "secret")
+    async def test_correct_pwd(self):
+        result = await self.auth_provider.check_password("@bob:test", "secret")
         self.assertTrue(result)
 
-    @defer.inlineCallbacks
-    def test_no_pwd(self):
-        result = yield self.auth_provider.check_password("@bob:test", "")
+    async def test_no_pwd(self):
+        result = await self.auth_provider.check_password("@bob:test", "")
         self.assertFalse(result)
 
 
 class LdapSearchTestCase(unittest.TestCase):
-    @defer.inlineCallbacks
-    def setUp(self):
-        self.ldap_server = yield create_ldap_server()
+    async def setUp(self):
+        self.ldap_server = await create_ldap_server()
         account_handler = Mock(spec_set=["check_user_exists"])
         account_handler.check_user_exists.return_value = True
 
@@ -95,17 +88,14 @@ class LdapSearchTestCase(unittest.TestCase):
     def tearDown(self):
         self.ldap_server.close()
 
-    @defer.inlineCallbacks
-    def test_correct_pwd_search_mode(self):
-        result = yield self.auth_provider.check_password("@bob:test", "secret")
+    async def test_correct_pwd_search_mode(self):
+        result = await self.auth_provider.check_password("@bob:test", "secret")
         self.assertTrue(result)
 
-    @defer.inlineCallbacks
-    def test_incorrect_pwd_search_mode(self):
-        result = yield self.auth_provider.check_password("@bob:test", "wrong_password")
+    async def test_incorrect_pwd_search_mode(self):
+        result = await self.auth_provider.check_password("@bob:test", "wrong_password")
         self.assertFalse(result)
 
-    @defer.inlineCallbacks
-    def test_unknown_user_search_mode(self):
-        result = yield self.auth_provider.check_password("@foobar:test", "some_password")
+    async def test_unknown_user_search_mode(self):
+        result = await self.auth_provider.check_password("@foobar:test", "some_password")
         self.assertFalse(result)

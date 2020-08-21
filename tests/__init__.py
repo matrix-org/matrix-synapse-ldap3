@@ -1,6 +1,6 @@
 from twisted.internet.endpoints import serverFromString
 from twisted.internet.protocol import ServerFactory
-from twisted.internet import reactor, defer
+from twisted.internet import reactor
 from twisted.python.components import registerAdapter
 from ldaptor.inmemory import fromLDIFFile
 from ldaptor.interfaces import IConnectedLDAPEntry
@@ -52,12 +52,11 @@ userPassword: {SSHA}mtIQXzjeID+j1LdjduYB1kjaHPgup8UnK4ofgw==
 """
 
 
-@defer.inlineCallbacks
-def _create_db():
+async def _create_db():
     f = BytesIO(LDIF)
-    db = yield fromLDIFFile(f)
+    db = await fromLDIFFile(f)
     f.close()
-    defer.returnValue(db)
+    return db
 
 
 class _LDAPServerFactory(ServerFactory):
@@ -102,20 +101,19 @@ registerAdapter(
 )
 
 
-@defer.inlineCallbacks
-def create_ldap_server():
+async def create_ldap_server():
     "Returns a context manager that represents the LDAP server."
 
-    db = yield _create_db()
+    db = await _create_db()
     factory = _LDAPServerFactory(db)
     factory.debug = True
 
     # We just pick an arbitrary port to listen on.
     serverEndpointStr = "tcp:0"
     e = serverFromString(reactor, serverEndpointStr)
-    listener = yield e.listen(factory)
+    listener = await e.listen(factory)
 
-    defer.returnValue(_LdapServer(listener))
+    return _LdapServer(listener)
 
 
 def create_auth_provider(server, account_handler, config=None):
