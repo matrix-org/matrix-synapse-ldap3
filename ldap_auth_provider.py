@@ -107,7 +107,7 @@ class LdapAuthProvider(object):
         # Local part of Matrix ID which will be used in registration process
         localpart = username
         if self.ldap_active_directory:
-            (login, domain, localpart) = self.map_login_to_upn(username)
+            (login, domain, localpart) = self._map_login_to_upn(username)
             uid_value = login + "@" + domain
             default_givenName = login
 
@@ -569,7 +569,7 @@ class LdapAuthProvider(object):
             logger.warning("Error during LDAP authentication: %s", e)
             raise
 
-    def map_login_to_upn(self, username):
+    def _map_login_to_upn(self, username):
         """Maps user provided login to Active Directory UPN and
         local part of Matrix ID.
 
