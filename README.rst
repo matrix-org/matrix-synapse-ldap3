@@ -86,14 +86,15 @@ Active Directory forest support
 If the ``active_directory`` flag is set to ``true``, an Active Directory forest will be
 searched for the login details.
 In this mode, the user enters their login details in one of the forms:
+
 - ``<login>/<domain>``
 - ``<domain>\<login>``
 
-Despite of entered login it will be mapped to Matrix UID ``<login>/<domain>`` (The 
-normal domain separators, ``@`` and ``\\``, cannot be used in Matrix User Identifiers, so 
-``/`` is used instead).
+In either case, this will be mapped to the Matrix UID ``<login>/<domain>`` (The 
+normal AD domain separators, ``@`` and ``\``, cannot be used in Matrix User Identifiers, so 
+``/`` is used instead.)
 
-Let's say you have several domains in example.com forest:
+Let's say you have several domains in the ``example.com`` forest:
 
 .. code:: yaml
 
@@ -106,23 +107,20 @@ Let's say you have several domains in example.com forest:
         base: "dc=example,dc=com"
         # Must be true for this feature to work
         active_directory: true
-        # Optional. Users from this domain may login
-        # without specifying domain part
+        # Optional. Users from this domain may log in without specifying the domain part
         default_domain: main.example.com
         attributes:
-           # This must be set to userPrincipalName
-           # when ad_forest is true
+           # This must be set to `userPrincipalName` when `active_directory` is true
            uid: "userPrincipalName"
            mail: "mail"
            name: "givenName"
         bind_dn: "cn=hacker,ou=svcaccts,dc=example,dc=com"
         bind_password: "ch33kym0nk3y"
-        filter: "(objectClass=user)"
 
 With this configuration the user can log in with either ``main.example.com\someuser``,
 ``someuser/main.example.com`` or ``someuser``.
 
-Users of other domains in ``example.com`` forest can log in with ``domain\login``
+Users of other domains in the ``example.com`` forest can log in with ``domain\login``
 or ``login/domain``.
 
 Troubleshooting and Debugging
