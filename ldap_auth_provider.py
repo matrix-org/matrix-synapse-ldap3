@@ -603,7 +603,7 @@ class LdapAuthProvider(object):
             (login, domain) = username.lower().rsplit("/", 1)
         else:
             if not self.ldap_default_domain:
-                logger.debug(
+                logger.info(
                     'No LDAP separator %s was found in uid %s '
                     'and LDAP default domain was not configured. ',
                     "/",
