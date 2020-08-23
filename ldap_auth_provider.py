@@ -84,7 +84,6 @@ class LdapAuthProvider(object):
         self.ldap_active_directory = config.active_directory
         if self.ldap_active_directory:
             self.ldap_default_domain = config.default_domain
-            self.ldap_separator = '/'
 
     def get_supported_login_types(self):
         return {'m.login.password': ('password',)}
@@ -272,7 +271,7 @@ class LdapAuthProvider(object):
             localpart = localpart[0] if len(localpart) == 1 else None
             if self.ldap_active_directory and localpart:
                 (login, domain) = localpart.lower().rsplit("@", 1)
-                localpart = login + self.ldap_separator + domain
+                localpart = login + "/" + domain
 
                 if (
                     self.ldap_default_domain
@@ -590,14 +589,14 @@ class LdapAuthProvider(object):
 
         if '\\' in username:
             (domain, login) = username.lower().rsplit('\\', 1)
-        elif self.ldap_separator in username:
-            (login, domain) = username.lower().rsplit(self.ldap_separator, 1)
+        elif "/" in username:
+            (login, domain) = username.lower().rsplit("/", 1)
         else:
             if not self.ldap_default_domain:
                 logger.debug(
                     'No LDAP separator %s was found in uid %s '
                     'and LDAP default domain was not configured. ',
-                    self.ldap_separator,
+                    "/",
                     self.ldap_default_domain
                 )
                 raise ActiveDirectoryUPNException()
@@ -605,7 +604,7 @@ class LdapAuthProvider(object):
         if self.ldap_default_domain and domain == self.ldap_default_domain.lower():
             localpart = login
         else:
-            localpart = login + self.ldap_separator + domain
+            localpart = login + "/" + domain
 
         return (login, domain, localpart)
 
