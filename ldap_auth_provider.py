@@ -99,6 +99,11 @@ class LdapAuthProvider(object):
         password = login_dict['password']
         if not password:
             defer.returnValue(False)
+
+        if username.startswith("@") and ":" in username:
+            # username is of the form @foo:bar.com
+            username = username.split(":", 1)[0][1:]
+
         # Used in LDAP queries as value of ldap_attributes['uid'] attribute.
         uid_value = username
         # Default display name for the user, if a new account is registered.
