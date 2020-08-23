@@ -108,7 +108,7 @@ class LdapAuthProvider(object):
         if self.ldap_active_directory:
             (login, domain, localpart) = self._map_login_to_upn(username)
             uid_value = login + "@" + domain
-            default_givenName = login
+            default_display_name = login
 
         try:
             tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
@@ -191,22 +191,24 @@ class LdapAuthProvider(object):
                     )
 
                     # These results will always return an array
-                    givenName = response["attributes"].get(
+                    display_name = response["attributes"].get(
                         self.ldap_attributes["name"], [localpart]
                     )
-                    givenName = (
-                        givenName[0] if len(givenName) == 1 else default_givenName
+                    display_name = (
+                        display_name[0]
+                        if len(display_name) == 1
+                        else default_display_name
                     )
 
                     mail = response["attributes"].get("mail", [None])
                     mail = mail[0] if len(mail) == 1 else None
                 else:
                     # search disabled, register account with basic information
-                    givenName = default_givenName
+                    display_name = default_display_name
                     mail = None
 
                 # Register the user
-                user_id = yield self.register_user(localpart, givenName, mail)
+                user_id = yield self.register_user(localpart, display_name, mail)
 
                 defer.returnValue(user_id)
 
