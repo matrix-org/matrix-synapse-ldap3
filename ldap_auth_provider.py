@@ -112,9 +112,12 @@ class LdapAuthProvider(object):
         localpart = username
 
         if self.ldap_active_directory:
-            (login, domain, localpart) = self._map_login_to_upn(username)
-            uid_value = login + "@" + domain
-            default_display_name = login
+            try:
+                (login, domain, localpart) = self._map_login_to_upn(username)
+                uid_value = login + "@" + domain
+                default_display_name = login
+            except ActiveDirectoryUPNException:
+                defer.returnValue(False)
 
         try:
             tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
