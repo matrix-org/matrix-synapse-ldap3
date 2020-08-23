@@ -285,9 +285,8 @@ class LdapAuthProvider(object):
                     self.ldap_default_domain
                     and domain.lower() == self.ldap_default_domain.lower()
                 ):
-                    user_id = self.account_handler.get_qualified_user_id(login)
-                    if (yield self.account_handler.check_user_exists(user_id)):
-                        localpart = login
+                    # Users in default AD domain don't have `/domain` suffix
+                    localpart = login
 
             givenName = response["attributes"].get(
                 self.ldap_attributes["name"], [localpart]
