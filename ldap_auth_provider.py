@@ -48,6 +48,7 @@ logger = logging.getLogger(__name__)
 
 
 class ActiveDirectoryUPNException(Exception):
+    """Raises in case Matrix ID can not be mapped to UPN"""
     pass
 
 
@@ -100,12 +101,10 @@ class LdapAuthProvider(object):
         if not password:
             defer.returnValue(False)
         # Used in LDAP queries as value of ldap_attributes['uid'] attribute.
-        # It will differ from username in case ldap_active_directory option is enabled.
         uid_value = username
-        # Used as default user name for account registration. It will be set to AD login
-        # in case ldap_active_directory option is enabled
-        default_givenName = username
-        # Local part of Matrix UID which will be used in registration process
+        # Default display name for the user, if a new account is registered.
+        default_display_name = username
+        # Local part of Matrix ID which will be used in registration process
         localpart = username
         if self.ldap_active_directory:
             (login, domain, localpart) = self.map_login_to_upn(username)
@@ -571,6 +570,20 @@ class LdapAuthProvider(object):
             raise
 
     def map_login_to_upn(self, username):
+        """Maps user provided login to Active Directory UPN and
+        local part of Matrix ID.
+
+        Args:
+            username (str): The user's login
+
+        Raises:
+            ActiveDirectoryUPNException: if username can not be
+                mapped to userPrincipalName
+
+        Returns:
+            Tuple[str, str, str]: a tuple of Active Directory login,
+            Active Directory domain and local part of Matrix ID.
+        """
         login = username.lower()
         domain = self.ldap_default_domain
         localpart = username
