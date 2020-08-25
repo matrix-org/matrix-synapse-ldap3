@@ -1,11 +1,15 @@
 language: python
+
+python:
+  - "3.8"
+
 env:
-- TOXENV=packaging
-- TOXENV=pep8
-- TOXENV=py35,codecov
-- TOXENV=py36,codecov
-- TOXENV=py37,codecov
-- TOXENV=py38,codecov
+  - TOXENV=packaging
+  - TOXENV=pep8
+  - TOXENV=py35,codecov
+  - TOXENV=py36,codecov
+  - TOXENV=py37,codecov
+  - TOXENV=py38,codecov
 
 install:
 - pip install tox
