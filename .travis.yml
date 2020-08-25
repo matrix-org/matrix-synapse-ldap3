@@ -2,9 +2,10 @@ language: python
 env:
 - TOXENV=packaging
 - TOXENV=pep8
-- TOXENV=py35-ldap0,codecov
-- TOXENV=py35-ldap1,codecov
-- TOXENV=py35-ldap2,codecov
+- TOXENV=py35,codecov
+- TOXENV=py36,codecov
+- TOXENV=py37,codecov
+- TOXENV=py38,codecov
 
 install:
 - pip install tox
