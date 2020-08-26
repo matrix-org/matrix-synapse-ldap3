@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 
 
 class ActiveDirectoryUPNException(Exception):
-    """Raises in case Matrix ID can not be mapped to UPN"""
+    """Raised in case the user's login credentials cannot be mapped to a UPN"""
     pass
 
 
