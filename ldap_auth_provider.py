@@ -596,10 +596,9 @@ class LdapAuthProvider(object):
         else:
             if not self.ldap_default_domain:
                 logger.info(
-                    'No LDAP separator %s was found in uid %s '
-                    'and LDAP default domain was not configured. ',
-                    "/",
-                    self.ldap_default_domain
+                    'No LDAP separator "/" was found in uid "%s" '
+                    'and LDAP default domain was not configured.',
+                    username
                 )
                 raise ActiveDirectoryUPNException()
 
