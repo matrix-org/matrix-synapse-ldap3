@@ -97,8 +97,6 @@ class LdapAuthProvider(object):
                 Canonical user ID if authentication against LDAP was successful
         """
         password = login_dict['password']
-        if not password:
-            defer.returnValue(False)
 
         if username.startswith("@") and ":" in username:
             # username is of the form @foo:bar.com
