@@ -7,3 +7,5 @@ __pycache__/
 /dist/
 /_trial_temp/
 /htmlcov/
+.idea/
+.python-version
