@@ -280,7 +280,7 @@ class LdapAuthProvider(object):
                 self.ldap_attributes["uid"], [None]
             )
             localpart = localpart[0] if len(localpart) == 1 else None
-            if self.ldap_active_directory and localpart:
+            if self.ldap_active_directory and localpart and "@" in localpart:
                 (login, domain) = localpart.lower().rsplit("@", 1)
                 localpart = login + "/" + domain
 
@@ -394,12 +394,6 @@ class LdapAuthProvider(object):
 
         ldap_config.active_directory = config.get("active_directory", False)
         if ldap_config.active_directory:
-            if config["attributes"]["uid"].lower() != "userprincipalname":
-                raise Exception(
-                    "Only userPrincipalName is supported "
-                    "as uid property in active_directory mode"
-                )
-
             ldap_config.default_domain = config.get("default_domain", None)
 
         return ldap_config

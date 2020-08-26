@@ -123,6 +123,9 @@ With this configuration the user can log in with either ``main.example.com\someu
 Users of other domains in the ``example.com`` forest can log in with ``domain\login``
 or ``login/domain``.
 
+Please note that ``userPrincipalName`` or similary looking LDAP attribute in the format
+``login@domain`` must be used when ``active_directory`` option is enabled.
+
 Troubleshooting and Debugging
 -----------------------------
 
