@@ -277,6 +277,10 @@ class LdapAuthProvider(object):
                 response
             )
 
+            # Close connection
+            if hasattr(conn, "unbind"):
+                yield threads.deferToThread(conn.unbind)
+
             if not result:
                 defer.returnValue(None)
 
