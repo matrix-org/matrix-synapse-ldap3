@@ -18,14 +18,10 @@ from twisted.internet import defer
 
 from mock import Mock
 
-from . import create_ldap_server, create_auth_provider
+from . import create_ldap_server, create_auth_provider, get_qualified_user_id
 
 import logging
 logging.basicConfig()
-
-
-def get_qualified_user_id(username):
-    return "@%s:test" % username
 
 
 class LdapSimpleTestCase(unittest.TestCase):
