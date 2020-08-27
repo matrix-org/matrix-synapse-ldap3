@@ -97,6 +97,11 @@ class LdapAuthProvider(object):
                 Canonical user ID if authentication against LDAP was successful
         """
         password = login_dict['password']
+        # According to section 5.1.2. of RFC 4513 an attempt to log in with
+        # non-empty DN and empty password is called Unauthenticated
+        # Authentication Mechanism of Simple Bind which is used to establish
+        # an anonymous authorization state and not suitable for user
+        # authentication.
         if not password:
             defer.returnValue(False)
 
