@@ -110,7 +110,6 @@ Let's say you have several domains in the ``example.com`` forest:
         # Optional. Users from this domain may log in without specifying the domain part
         default_domain: main.example.com
         attributes:
-           # This must be set to `userPrincipalName` when `active_directory` is true
            uid: "userPrincipalName"
            mail: "mail"
            name: "givenName"
@@ -123,8 +122,8 @@ With this configuration the user can log in with either ``main.example.com\someu
 Users of other domains in the ``example.com`` forest can log in with ``domain\login``
 or ``login/domain``.
 
-Please note that ``userPrincipalName`` or similary looking LDAP attribute in the format
-``login@domain`` must be used when ``active_directory`` option is enabled.
+Please note that ``userPrincipalName`` or a similar-looking LDAP attribute in the format
+``login@domain`` must be used when the ``active_directory`` option is enabled.
 
 Troubleshooting and Debugging
 -----------------------------
