@@ -128,10 +128,6 @@ class LdapAuthProvider(object):
             )
 
             if self.ldap_mode == LDAPMode.SIMPLE:
-                if not password:
-                    # Password is mandatory in simple bind
-                    defer.returnValue(False)
-
                 bind_dn = "{prop}={value},{base}".format(
                     prop=self.ldap_attributes['uid'],
                     value=uid_value,
