@@ -125,10 +125,7 @@ class LdapAuthProvider(object):
                 defer.returnValue(False)
 
         try:
-            tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
-            server = ldap3.ServerPool(
-                [ldap3.Server(uri, get_info=None, tls=tls) for uri in self.ldap_uris],
-            )
+            server = self._get_server()
             logger.debug(
                 "Attempting LDAP connection with %s",
                 self.ldap_uris
@@ -256,9 +253,7 @@ class LdapAuthProvider(object):
 
         # Talk to LDAP and check if this email/password combo is correct
         try:
-            server = ldap3.ServerPool(
-                [ldap3.Server(uri, get_info=None) for uri in self.ldap_uris],
-            )
+            server = self._get_server()
             logger.debug(
                 "Attempting LDAP connection with %s",
                 self.ldap_uris
@@ -406,6 +401,18 @@ class LdapAuthProvider(object):
             ldap_config.default_domain = config.get("default_domain", None)
 
         return ldap_config
+
+    def _get_server(self):
+        return ldap3.ServerPool(
+            [
+                ldap3.Server(
+                    uri,
+                    get_info=None,
+                    tls=ldap3.Tls(validate=ssl.CERT_REQUIRED)
+                )
+                for uri in self.ldap_uris
+            ],
+        )
 
     @defer.inlineCallbacks
     def _ldap_simple_bind(self, server, bind_dn, password):
