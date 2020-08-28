@@ -480,33 +480,16 @@ class LdapAuthProvider(object):
         """
 
         try:
-            conn = yield threads.deferToThread(
-                ldap3.Connection,
-                server,
-                self.ldap_bind_dn,
-                self.ldap_bind_password,
-                raise_exceptions=True,
-            )
-            logger.debug(
-                "Established LDAP connection in search mode: %s",
-                conn
+            result, conn = yield self._ldap_simple_bind(
+                server=server,
+                bind_dn=self.ldap_bind_dn,
+                password=self.ldap_bind_password,
             )
 
-            if self.ldap_start_tls:
-                yield threads.deferToThread(conn.open)
-                yield threads.deferToThread(conn.start_tls)
-                logger.debug(
-                    "Upgraded LDAP connection in search mode through "
-                    "StartTLS: %s",
-                    conn
-                )
+            if not result:
+                if hasattr(conn, "unbind"):
+                    yield threads.deferToThread(conn.unbind)
 
-            if not (yield threads.deferToThread(conn.bind)):
-                logger.warning(
-                    "Binding against LDAP with `bind_dn` failed: %s",
-                    conn.result['description']
-                )
-                yield threads.deferToThread(conn.unbind)
                 defer.returnValue((False, None, None))
 
             # Construct search filter
