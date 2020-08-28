@@ -70,6 +70,13 @@ class LdapActiveDirectoryTestCase(AbstractLdapActiveDirectoryTestCase, unittest.
         self.assertEqual(result, "@mainuser/main.example.org:test")
 
         result = yield self.auth_provider.check_auth(
+            "main\\mainuser",
+            'm.login.password',
+            {"password": "abracadabra"}
+        )
+        self.assertEqual(result, "@mainuser/main.example.org:test")
+
+        result = yield self.auth_provider.check_auth(
             "subsidiary.example.org\\nonmainuser",
             'm.login.password',
             {"password": "simsalabim"}
@@ -77,7 +84,21 @@ class LdapActiveDirectoryTestCase(AbstractLdapActiveDirectoryTestCase, unittest.
         self.assertEqual(result, "@nonmainuser/subsidiary.example.org:test")
 
         result = yield self.auth_provider.check_auth(
+            "subsidiary\\nonmainuser",
+            'm.login.password',
+            {"password": "simsalabim"}
+        )
+        self.assertEqual(result, "@nonmainuser/subsidiary.example.org:test")
+
+        result = yield self.auth_provider.check_auth(
             "subsidiary.example.org\\mainuser",
+            'm.login.password',
+            {"password": "changeit"}
+        )
+        self.assertEqual(result, "@mainuser/subsidiary.example.org:test")
+
+        result = yield self.auth_provider.check_auth(
+            "subsidiary\\mainuser",
             'm.login.password',
             {"password": "changeit"}
         )

@@ -2,8 +2,11 @@ from twisted.internet.endpoints import serverFromString
 from twisted.internet.protocol import ServerFactory
 from twisted.internet import reactor, defer
 from twisted.python.components import registerAdapter
+from ldaptor import interfaces
 from ldaptor.inmemory import fromLDIFFile
 from ldaptor.interfaces import IConnectedLDAPEntry
+from ldaptor.protocols import pureldap
+from ldaptor.protocols.ldap import ldaperrors
 from ldaptor.protocols.ldap.ldapserver import LDAPServer
 try:
     from cStringIO import StringIO as BytesIO
@@ -114,8 +117,22 @@ def _create_db():
     defer.returnValue(db)
 
 
+class _ActiveDirectoryLDAPServer(LDAPServer):
+    def getRootDSE(self, request, reply):
+        root = interfaces.IConnectedLDAPEntry(self.factory)
+        reply(pureldap.LDAPSearchResultEntry(
+            objectName='',
+            attributes=[('supportedLDAPVersion', ['3']),
+                        ('namingContexts', [root.dn.getText()]),
+                        ('supportedExtension', [
+                            pureldap.LDAPPasswordModifyRequest.oid, ]),
+                        ('rootDomainNamingContext', ['DC=example,DC=org']), ], ))
+        return pureldap.LDAPSearchResultDone(
+            resultCode=ldaperrors.Success.resultCode)
+
+
 class _LDAPServerFactory(ServerFactory):
-    protocol = LDAPServer
+    protocol = _ActiveDirectoryLDAPServer
 
     def __init__(self, root):
         self.root = root

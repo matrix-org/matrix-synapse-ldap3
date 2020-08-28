@@ -84,6 +84,7 @@ class LdapAuthProvider(object):
         self.ldap_active_directory = config.active_directory
         if self.ldap_active_directory:
             self.ldap_default_domain = config.default_domain
+            self._fetch_root_domain()
 
     def get_supported_login_types(self):
         return {'m.login.password': ('password',)}
@@ -402,17 +403,58 @@ class LdapAuthProvider(object):
 
         return ldap_config
 
-    def _get_server(self):
+    def _get_server(self, get_info=None):
+        """Constructs ServerPool from configured LDAP URIs
+
+        Args:
+            get_info ([str], optional): specifies if the server schema and server
+            specific info must be read. Defaults to None.
+
+        Returns:
+            [ServerPool]: servers groupped to ServerPool
+        """
         return ldap3.ServerPool(
             [
                 ldap3.Server(
                     uri,
-                    get_info=None,
+                    get_info=get_info,
                     tls=ldap3.Tls(validate=ssl.CERT_REQUIRED)
                 )
                 for uri in self.ldap_uris
             ],
         )
+
+    @defer.inlineCallbacks
+    def _fetch_root_domain(self):
+        """Fetches root domain from LDAP and saves it to ``self.ldap_root_domain``"""
+        self.ldap_root_domain = None
+        server = self._get_server(get_info=ldap3.DSA)
+
+        result, conn = yield self._ldap_simple_bind(
+            server=server,
+            bind_dn=self.ldap_bind_dn,
+            password=self.ldap_bind_password,
+        )
+
+        if result:
+            if (
+                conn.server.info.other
+                and "rootDomainNamingContext" in conn.server.info.other
+                and conn.server.info.other["rootDomainNamingContext"]
+            ):
+                self.ldap_root_domain = ".".join(
+                    [
+                        dc.split("=")[1] for dc
+                        in conn.server.info.other["rootDomainNamingContext"][0].split(",")
+                        if "=" in dc
+                    ]
+                )
+                logger.info('Obtained root domain "%s"', self.ldap_root_domain)
+        else:
+            logger.warning("Unable to get root domain")
+
+        if hasattr(conn, "unbind"):
+            yield threads.deferToThread(conn.unbind)
 
     @defer.inlineCallbacks
     def _ldap_simple_bind(self, server, bind_dn, password):
@@ -609,6 +651,8 @@ class LdapAuthProvider(object):
 
         if '\\' in username:
             (domain, login) = username.lower().rsplit('\\', 1)
+            if self.ldap_root_domain and not domain.endswith(self.ldap_root_domain):
+                domain += "." + self.ldap_root_domain
         elif "/" in username:
             (login, domain) = username.lower().rsplit("/", 1)
         else:
