@@ -428,8 +428,12 @@ class LdapAuthProvider(object):
     def _fetch_root_domain(self):
         """Fetches root domain from LDAP and saves it to ``self.ldap_root_domain``"""
         self.ldap_root_domain = None
-        server = self._get_server(get_info=ldap3.DSA)
 
+        if self.ldap_mode != LDAPMode.SEARCH:
+            logger.warning("Fetching root domain is supported in search mode only")
+            return
+
+        server = self._get_server(get_info=ldap3.DSA)
         result, conn = yield self._ldap_simple_bind(
             server=server,
             bind_dn=self.ldap_bind_dn,
