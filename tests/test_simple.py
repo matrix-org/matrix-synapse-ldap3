@@ -18,7 +18,8 @@ from twisted.internet import defer
 
 from mock import Mock
 
-from . import create_ldap_server, create_auth_provider, make_awaitable, get_qualified_user_id
+from . import create_ldap_server, create_auth_provider, make_awaitable,\
+    get_qualified_user_id
 
 import logging
 logging.basicConfig()

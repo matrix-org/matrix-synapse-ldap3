@@ -121,7 +121,7 @@ class LdapAuthProvider(object):
                 uid_value = login + "@" + domain
                 default_display_name = login
             except ActiveDirectoryUPNException:
-               return False
+                return False
 
         try:
             tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
