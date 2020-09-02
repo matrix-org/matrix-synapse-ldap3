@@ -25,9 +25,27 @@ dc: example
 objectClass: dcObject
 objectClass: organization
 
+dn: dc=main,dc=example,dc=org
+dc: main
+objectClass: dcObject
+objectClass: organization
+
+dn: dc=subsidiary,dc=example,dc=org
+dc: subsidiary
+objectClass: dcObject
+objectClass: organization
+
 dn: ou=people,dc=example,dc=org
 objectClass: organizationalUnit
 ou: people
+
+dn: ou=users,dc=main,dc=example,dc=org
+objectClass: organizationalUnit
+ou: users
+
+dn: ou=users,dc=subsidiary,dc=example,dc=org
+objectClass: organizationalUnit
+ou: users
 
 dn: cn=bob,ou=people,dc=example,dc=org
 cn: bob
@@ -50,6 +68,42 @@ gn: John Smith
 objectClass: person
 # password is: eekretsay
 userPassword: {SSHA}mtIQXzjeID+j1LdjduYB1kjaHPgup8UnK4ofgw==
+
+dn: cn=mainuser,ou=users,dc=main,dc=example,dc=org
+userPrincipalName: mainuser@main.example.org
+cn: mainuser
+gn: One Of
+mail: mainuser@main.example.org
+objectClass: user
+# password is: abracadabra
+userPassword: {SSHA}qLzlip9HesTLxT6qpWIawKXeKsy4L2h6
+
+dn: cn=uniqueuser,ou=users,dc=main,dc=example,dc=org
+userPrincipalName: uniqueuser@main.example.org
+cn: uniqueuser
+gn: One Of
+mail: uniqueuser@main.example.org
+objectClass: user
+# password is: nothing
+userPassword: {SSHA}jK5IJ/ozmZnEE5g6UU9WBsBBPe6LKFZz
+
+dn: cn=nonmainuser,ou=users,dc=subsidiary,dc=example,dc=org
+userPrincipalName: nonmainuser@subsidiary.example.org
+cn: nonmainuser
+gn: Someone Else
+mail: nonmainuser@subsidiary.example.org
+objectClass: user
+# password is: simsalabim
+userPassword: {SSHA}sHNj89kojBZ5DBHWDwwvzqmL0iuXn0mM
+
+dn: cn=mainuser,ou=users,dc=subsidiary,dc=example,dc=org
+userPrincipalName: mainuser@subsidiary.example.org
+cn: mainuser
+gn: One Of
+mail: mainuser@main.example.org
+objectClass: user
+# password is: changeit
+userPassword: {SSHA}AmOdJt9kOXZ2X4L89w00eKaPQN69W6yb
 
 """
 
@@ -140,3 +194,10 @@ def create_auth_provider(server, account_handler, config=None):
 
 async def make_awaitable(result: Any) -> Any:
     return result
+
+
+def get_qualified_user_id(username):
+    if not username.startswith('@'):
+        return "@%s:test" % username
+
+    return username

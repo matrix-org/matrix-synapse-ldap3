@@ -47,6 +47,11 @@ except ImportError:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
+class ActiveDirectoryUPNException(Exception):
+    """Raised in case the user's login credentials cannot be mapped to a UPN"""
+    pass
+
+
 class LDAPMode(object):
     SIMPLE = "simple",
     SEARCH = "search",
@@ -76,17 +81,47 @@ class LdapAuthProvider(object):
             self.ldap_bind_password = config.bind_password
             self.ldap_filter = config.filter
 
-    async def check_password(self, user_id, password):
+        self.ldap_active_directory = config.active_directory
+        if self.ldap_active_directory:
+            self.ldap_default_domain = config.default_domain
+
+    def get_supported_login_types(self):
+        return {'m.login.password': ('password',)}
+
+    async def check_auth(self, username, login_type, login_dict):
         """ Attempt to authenticate a user against an LDAP Server
             and register an account if none exists.
 
             Returns:
-                True if authentication against LDAP was successful
+                Canonical user ID if authentication against LDAP was successful
         """
+        password = login_dict['password']
+        # According to section 5.1.2. of RFC 4513 an attempt to log in with
+        # non-empty DN and empty password is called Unauthenticated
+        # Authentication Mechanism of Simple Bind which is used to establish
+        # an anonymous authorization state and not suitable for user
+        # authentication.
         if not password:
             return False
-        # user_id is of the form @foo:bar.com
-        localpart = user_id.split(":", 1)[0][1:]
+
+        if username.startswith("@") and ":" in username:
+            # username is of the form @foo:bar.com
+            username = username.split(":", 1)[0][1:]
+
+        # Used in LDAP queries as value of ldap_attributes['uid'] attribute.
+        uid_value = username
+        # Default display name for the user, if a new account is registered.
+        default_display_name = username
+        # Local part of Matrix ID which will be used in registration process
+        localpart = username
+
+        if self.ldap_active_directory:
+            try:
+                (login, domain, localpart) = self._map_login_to_upn(username)
+                uid_value = login + "@" + domain
+                default_display_name = login
+            except ActiveDirectoryUPNException:
+               return False
 
         try:
             tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
@@ -101,7 +136,7 @@ class LdapAuthProvider(object):
             if self.ldap_mode == LDAPMode.SIMPLE:
                 bind_dn = "{prop}={value},{base}".format(
                     prop=self.ldap_attributes['uid'],
-                    value=localpart,
+                    value=uid_value,
                     base=self.ldap_base
                 )
                 result, conn = await self._ldap_simple_bind(
@@ -116,7 +151,7 @@ class LdapAuthProvider(object):
                 if not result:
                     return False
             elif self.ldap_mode == LDAPMode.SEARCH:
-                filters = [(self.ldap_attributes["uid"], localpart)]
+                filters = [(self.ldap_attributes["uid"], uid_value)]
                 result, conn, _ = await self._ldap_authenticated_search(
                     server=server, password=password, filters=filters
                 )
@@ -147,41 +182,46 @@ class LdapAuthProvider(object):
                 )
                 return False
 
+            # Get full user id from localpart
+            user_id = self.account_handler.get_qualified_user_id(localpart)
+
             # check if user with user_id exists
             if await self.account_handler.check_user_exists(user_id):
                 # exists, authentication complete
                 if hasattr(conn, "unbind"):
                     await threads.deferToThread(conn.unbind)
-                return True
+                return user_id
 
             else:
                 # does not exist, register
                 if self.ldap_mode == LDAPMode.SEARCH:
                     # search enabled, fetch metadata for account creation from
                     # existing ldap connection
-                    filters = [(self.ldap_attributes['uid'], localpart)]
+                    filters = [(self.ldap_attributes['uid'], uid_value)]
 
                     result, conn, response = await self._ldap_authenticated_search(
                         server=server, password=password, filters=filters,
                     )
 
                     # These results will always return an array
-                    givenName = response["attributes"].get(
+                    display_name = response["attributes"].get(
                         self.ldap_attributes["name"], [localpart]
                     )
-                    givenName = (
-                        givenName[0] if len(givenName) == 1 else localpart
+                    display_name = (
+                        display_name[0]
+                        if len(display_name) == 1
+                        else default_display_name
                     )
 
                     mail = response["attributes"].get("mail", [None])
                     mail = mail[0] if len(mail) == 1 else None
                 else:
                     # search disabled, register account with basic information
-                    givenName = localpart
+                    display_name = default_display_name
                     mail = None
 
                 # Register the user
-                user_id = await self.register_user(localpart, givenName, mail)
+                user_id = await self.register_user(localpart, display_name, mail)
 
                 return user_id
 
@@ -235,6 +275,10 @@ class LdapAuthProvider(object):
                 response
             )
 
+            # Close connection
+            if hasattr(conn, "unbind"):
+                await threads.deferToThread(conn.unbind)
+
             if not result:
                 return None
 
@@ -243,6 +287,16 @@ class LdapAuthProvider(object):
                 self.ldap_attributes["uid"], [None]
             )
             localpart = localpart[0] if len(localpart) == 1 else None
+            if self.ldap_active_directory and localpart and "@" in localpart:
+                (login, domain) = localpart.lower().rsplit("@", 1)
+                localpart = login + "/" + domain
+
+                if (
+                    self.ldap_default_domain
+                    and domain.lower() == self.ldap_default_domain.lower()
+                ):
+                    # Users in default AD domain don't have `/domain` suffix
+                    localpart = login
 
             givenName = response["attributes"].get(
                 self.ldap_attributes["name"], [localpart]
@@ -343,6 +397,10 @@ class LdapAuthProvider(object):
             "name",
             "mail",
         ])
+
+        ldap_config.active_directory = config.get("active_directory", False)
+        if ldap_config.active_directory:
+            ldap_config.default_domain = config.get("default_domain", None)
 
         return ldap_config
 
@@ -517,6 +575,45 @@ class LdapAuthProvider(object):
         except ldap3.core.exceptions.LDAPException as e:
             logger.warning("Error during LDAP authentication: %s", e)
             raise
+
+    def _map_login_to_upn(self, username):
+        """Maps user provided login to Active Directory UPN and
+        local part of Matrix ID.
+
+        Args:
+            username (str): The user's login
+
+        Raises:
+            ActiveDirectoryUPNException: if username can not be
+                mapped to userPrincipalName
+
+        Returns:
+            Tuple[str, str, str]: a tuple of Active Directory login,
+            Active Directory domain and local part of Matrix ID.
+        """
+        login = username.lower()
+        domain = self.ldap_default_domain
+        localpart = username
+
+        if '\\' in username:
+            (domain, login) = username.lower().rsplit('\\', 1)
+        elif "/" in username:
+            (login, domain) = username.lower().rsplit("/", 1)
+        else:
+            if not self.ldap_default_domain:
+                logger.info(
+                    'No LDAP separator "/" was found in uid "%s" '
+                    'and LDAP default domain was not configured.',
+                    username
+                )
+                raise ActiveDirectoryUPNException()
+
+        if self.ldap_default_domain and domain == self.ldap_default_domain.lower():
+            localpart = login
+        else:
+            localpart = login + "/" + domain
+
+        return (login, domain, localpart)
 
 
 def _require_keys(config, required):
