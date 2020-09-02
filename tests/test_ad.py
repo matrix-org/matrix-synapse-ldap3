@@ -12,13 +12,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from twisted.internet.defer import ensureDeferred
 from twisted.trial import unittest
 from twisted.internet import defer
 
 from mock import Mock
 
-from . import create_ldap_server, create_auth_provider, get_qualified_user_id
+from . import (
+    create_ldap_server,
+    create_auth_provider,
+    get_qualified_user_id,
+    make_awaitable,
+)
 
 import logging
 logging.basicConfig()
@@ -27,9 +32,9 @@ logging.basicConfig()
 class AbstractLdapActiveDirectoryTestCase():
     @defer.inlineCallbacks
     def setUp(self):
-        self.ldap_server = yield create_ldap_server()
+        self.ldap_server = yield ensureDeferred(create_ldap_server())
         account_handler = Mock(spec_set=["check_user_exists", "get_qualified_user_id"])
-        account_handler.check_user_exists.return_value = True
+        account_handler.check_user_exists.return_value = make_awaitable(True)
         account_handler.get_qualified_user_id = get_qualified_user_id
 
         self.auth_provider = create_auth_provider(
@@ -62,59 +67,59 @@ class AbstractLdapActiveDirectoryTestCase():
 class LdapActiveDirectoryTestCase(AbstractLdapActiveDirectoryTestCase, unittest.TestCase):
     @defer.inlineCallbacks
     def test_correct_pwd(self):
-        result = yield self.auth_provider.check_auth(
+        result = yield ensureDeferred(self.auth_provider.check_auth(
             "main.example.org\\mainuser",
             'm.login.password',
             {"password": "abracadabra"}
-        )
+        ))
         self.assertEqual(result, "@mainuser/main.example.org:test")
 
-        result = yield self.auth_provider.check_auth(
+        result = yield ensureDeferred(self.auth_provider.check_auth(
             "subsidiary.example.org\\nonmainuser",
             'm.login.password',
             {"password": "simsalabim"}
-        )
+        ))
         self.assertEqual(result, "@nonmainuser/subsidiary.example.org:test")
 
-        result = yield self.auth_provider.check_auth(
+        result = yield ensureDeferred(self.auth_provider.check_auth(
             "subsidiary.example.org\\mainuser",
             'm.login.password',
             {"password": "changeit"}
-        )
+        ))
         self.assertEqual(result, "@mainuser/subsidiary.example.org:test")
 
     @defer.inlineCallbacks
     def test_single_email(self):
-        result = yield self.auth_provider.check_3pid_auth(
+        result = yield ensureDeferred(self.auth_provider.check_3pid_auth(
             "email",
             "mainuser@main.example.org",
             "abracadabra",
-        )
+        ))
         self.assertFalse(result)
 
     @defer.inlineCallbacks
     def test_incorrect_pwd(self):
-        result = yield self.auth_provider.check_auth(
+        result = yield ensureDeferred(self.auth_provider.check_auth(
             "main.example.org\\mainuser",
             'm.login.password',
             {"password": "bruteforce"}
-        )
+        ))
         self.assertFalse(result)
 
-        result = yield self.auth_provider.check_auth(
+        result = yield ensureDeferred(self.auth_provider.check_auth(
             "subsidiary.example.org\\mainuser",
             'm.login.password',
             {"password": "abracadabra"}
-        )
+        ))
         self.assertFalse(result)
 
     @defer.inlineCallbacks
     def test_email_login(self):
-        result = yield self.auth_provider.check_3pid_auth(
+        result = yield ensureDeferred(self.auth_provider.check_3pid_auth(
             "email",
             "uniqueuser@main.example.org",
             "nothing",
-        )
+        ))
         self.assertEqual(result, "@uniqueuser/main.example.org:test")
 
 
@@ -130,55 +135,55 @@ class LdapActiveDirectoryDefaultDomainTestCase(
 
     @defer.inlineCallbacks
     def test_correct_pwd(self):
-        result = yield self.auth_provider.check_auth(
+        result = yield ensureDeferred(self.auth_provider.check_auth(
             "mainuser",
             'm.login.password',
             {"password": "abracadabra"}
-        )
+        ))
         self.assertEqual(result, "@mainuser:test")
 
-        result = yield self.auth_provider.check_auth(
+        result = yield ensureDeferred(self.auth_provider.check_auth(
             "main.example.org\\mainuser",
             'm.login.password',
             {"password": "abracadabra"}
-        )
+        ))
         self.assertEqual(result, "@mainuser:test")
 
-        result = yield self.auth_provider.check_auth(
+        result = yield ensureDeferred(self.auth_provider.check_auth(
             "subsidiary.example.org\\nonmainuser",
             'm.login.password',
             {"password": "simsalabim"}
-        )
+        ))
         self.assertEqual(result, "@nonmainuser/subsidiary.example.org:test")
 
-        result = yield self.auth_provider.check_auth(
+        result = yield ensureDeferred(self.auth_provider.check_auth(
             "subsidiary.example.org\\mainuser",
             'm.login.password',
             {"password": "changeit"}
-        )
+        ))
         self.assertEqual(result, "@mainuser/subsidiary.example.org:test")
 
     @defer.inlineCallbacks
     def test_incorrect_pwd(self):
-        result = yield self.auth_provider.check_auth(
+        result = yield ensureDeferred(self.auth_provider.check_auth(
             "mainuser",
             'm.login.password',
             {"password": "changeit"}
-        )
+        ))
         self.assertFalse(result)
 
-        result = yield self.auth_provider.check_auth(
+        result = yield ensureDeferred(self.auth_provider.check_auth(
             "subsidiary.example.org\\mainuser",
             'm.login.password',
             {"password": "abracadabra"}
-        )
+        ))
         self.assertFalse(result)
 
     @defer.inlineCallbacks
     def test_email_login(self):
-        result = yield self.auth_provider.check_3pid_auth(
+        result = yield ensureDeferred(self.auth_provider.check_3pid_auth(
             "email",
             "uniqueuser@main.example.org",
             "nothing",
-        )
+        ))
         self.assertEqual(result, "@uniqueuser:test")
