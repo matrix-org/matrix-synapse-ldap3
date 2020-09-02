@@ -31,7 +31,7 @@ class LdapSimpleTestCase(unittest.TestCase):
         self.ldap_server = yield defer.ensureDeferred(create_ldap_server())
         account_handler = Mock(spec_set=["check_user_exists", "get_qualified_user_id"])
         account_handler.check_user_exists.return_value = make_awaitable(True)
-        account_handler.get_qualified_user_id = make_awaitable(get_qualified_user_id)
+        account_handler.get_qualified_user_id = get_qualified_user_id
 
         self.auth_provider = create_auth_provider(
             self.ldap_server, account_handler,
@@ -93,7 +93,7 @@ class LdapSearchTestCase(unittest.TestCase):
         self.ldap_server = yield defer.ensureDeferred(create_ldap_server())
         account_handler = Mock(spec_set=["check_user_exists", "get_qualified_user_id"])
         account_handler.check_user_exists.return_value = make_awaitable(True)
-        account_handler.get_qualified_user_id = make_awaitable(get_qualified_user_id)
+        account_handler.get_qualified_user_id = get_qualified_user_id
 
         self.auth_provider = create_auth_provider(
             self.ldap_server, account_handler,

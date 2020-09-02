@@ -1,4 +1,5 @@
-from typing import Any
+from asyncio.futures import Future
+from typing import Any, Awaitable
 
 from twisted.internet.endpoints import serverFromString
 from twisted.internet.protocol import ServerFactory
@@ -192,8 +193,15 @@ def create_auth_provider(server, account_handler, config=None):
     return LdapAuthProvider(config, account_handler=account_handler)
 
 
-async def make_awaitable(result: Any) -> Any:
-    return result
+def make_awaitable(result: Any) -> Awaitable[Any]:
+    """
+    Makes an awaitable, suitable for mocking an `async` function.
+    This uses Futures as they can be awaited multiple times so can be returned
+    to multiple callers.
+    """
+    future = Future()
+    future.set_result(result)
+    return future
 
 
 def get_qualified_user_id(username):
