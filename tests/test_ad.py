@@ -19,9 +19,9 @@ from twisted.internet import defer
 from mock import Mock
 
 from . import (
-	create_ldap_server,
-	create_auth_provider,
-	get_qualified_user_id,
+    create_ldap_server,
+    create_auth_provider,
+    get_qualified_user_id,
     make_awaitable,
 )
 
