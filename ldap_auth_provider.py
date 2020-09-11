@@ -487,9 +487,6 @@ class LdapAuthProvider(object):
             )
 
             if not result:
-                if hasattr(conn, "unbind"):
-                    yield threads.deferToThread(conn.unbind)
-
                 defer.returnValue((False, None, None))
 
             # Construct search filter
