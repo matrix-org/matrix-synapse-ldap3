@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from twisted.internet import defer, threads
+from twisted.internet import threads
 
 
 import ldap3
@@ -84,7 +84,7 @@ class LdapAuthProvider(object):
         self.ldap_active_directory = config.active_directory
         if self.ldap_active_directory:
             self.ldap_default_domain = config.default_domain
-            defer.ensureDeferred(self._fetch_root_domain())
+            self.ldap_root_domain = False
 
     def get_supported_login_types(self):
         return {'m.login.password': ('password',)}
@@ -118,7 +118,7 @@ class LdapAuthProvider(object):
 
         if self.ldap_active_directory:
             try:
-                (login, domain, localpart) = self._map_login_to_upn(username)
+                (login, domain, localpart) = await self._map_login_to_upn(username)
                 uid_value = login + "@" + domain
                 default_display_name = login
             except ActiveDirectoryUPNException:
@@ -421,13 +421,19 @@ class LdapAuthProvider(object):
             ],
         )
 
-    async def _fetch_root_domain(self):
-        """Fetches root domain from LDAP and saves it to ``self.ldap_root_domain``"""
-        self.ldap_root_domain = None
+    async def _fetch_root_domain(self) -> str:
+        """Fetches root domain from LDAP and saves it to ``self.ldap_root_domain``
+
+        Returns:
+            str: root domain of Active Directory forest
+        """
+        if self.ldap_root_domain is not False:
+            return self.ldap_root_domain
 
         if self.ldap_mode != LDAPMode.SEARCH:
             logger.warning("Fetching root domain is supported in search mode only")
-            return
+            self.ldap_root_domain = None
+            return self.ldap_root_domain
 
         server = self._get_server(get_info=ldap3.DSA)
         result, conn = await self._ldap_simple_bind(
@@ -437,6 +443,8 @@ class LdapAuthProvider(object):
         )
 
         if result:
+            self.ldap_root_domain = None
+
             if (
                 conn.server.info.other
                 and "rootDomainNamingContext" in conn.server.info.other
@@ -455,6 +463,8 @@ class LdapAuthProvider(object):
 
         if hasattr(conn, "unbind"):
             await threads.deferToThread(conn.unbind)
+
+        return self.ldap_root_domain
 
     async def _ldap_simple_bind(self, server, bind_dn, password):
         """ Attempt a simple bind with the credentials
@@ -628,7 +638,7 @@ class LdapAuthProvider(object):
             logger.warning("Error during LDAP authentication: %s", e)
             raise
 
-    def _map_login_to_upn(self, username):
+    async def _map_login_to_upn(self, username):
         """Maps user provided login to Active Directory UPN and
         local part of Matrix ID.
 
@@ -649,8 +659,9 @@ class LdapAuthProvider(object):
 
         if '\\' in username:
             (domain, login) = username.lower().rsplit('\\', 1)
-            if self.ldap_root_domain and not domain.endswith(self.ldap_root_domain):
-                domain += "." + self.ldap_root_domain
+            ldap_root_domain = await self._fetch_root_domain()
+            if ldap_root_domain and not domain.endswith(ldap_root_domain):
+                domain += "." + ldap_root_domain
         elif "/" in username:
             (login, domain) = username.lower().rsplit("/", 1)
         else:
