@@ -1,6 +1,9 @@
+from asyncio.futures import Future
+from typing import Any, Awaitable
+
 from twisted.internet.endpoints import serverFromString
 from twisted.internet.protocol import ServerFactory
-from twisted.internet import reactor, defer
+from twisted.internet import reactor
 from twisted.python.components import registerAdapter
 from ldaptor.inmemory import fromLDIFFile
 from ldaptor.interfaces import IConnectedLDAPEntry
@@ -106,12 +109,11 @@ userPassword: {SSHA}AmOdJt9kOXZ2X4L89w00eKaPQN69W6yb
 """
 
 
-@defer.inlineCallbacks
-def _create_db():
+async def _create_db():
     f = BytesIO(LDIF)
-    db = yield fromLDIFFile(f)
+    db = await fromLDIFFile(f)
     f.close()
-    defer.returnValue(db)
+    return db
 
 
 class _LDAPServerFactory(ServerFactory):
@@ -156,20 +158,19 @@ registerAdapter(
 )
 
 
-@defer.inlineCallbacks
-def create_ldap_server():
+async def create_ldap_server():
     "Returns a context manager that represents the LDAP server."
 
-    db = yield _create_db()
+    db = await _create_db()
     factory = _LDAPServerFactory(db)
     factory.debug = True
 
     # We just pick an arbitrary port to listen on.
     serverEndpointStr = "tcp:0"
     e = serverFromString(reactor, serverEndpointStr)
-    listener = yield e.listen(factory)
+    listener = await e.listen(factory)
 
-    defer.returnValue(_LdapServer(listener))
+    return _LdapServer(listener)
 
 
 def create_auth_provider(server, account_handler, config=None):
@@ -190,6 +191,17 @@ def create_auth_provider(server, account_handler, config=None):
         })
 
     return LdapAuthProvider(config, account_handler=account_handler)
+
+
+def make_awaitable(result: Any) -> Awaitable[Any]:
+    """
+    Makes an awaitable, suitable for mocking an `async` function.
+    This uses Futures as they can be awaited multiple times so can be returned
+    to multiple callers.
+    """
+    future = Future()
+    future.set_result(result)
+    return future
 
 
 def get_qualified_user_id(username):
