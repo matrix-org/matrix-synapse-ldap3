@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Optional
+
 from twisted.internet import threads
 
 
@@ -402,11 +404,11 @@ class LdapAuthProvider(object):
 
         return ldap_config
 
-    def _get_server(self, get_info=None):
+    def _get_server(self, get_info: Optional[str] = None) -> ldap3.ServerPool:
         """Constructs ServerPool from configured LDAP URIs
 
         Args:
-            get_info ([str], optional): specifies if the server schema and server
+            get_info (str, optional): specifies if the server schema and server
             specific info must be read. Defaults to None.
 
         Returns:
