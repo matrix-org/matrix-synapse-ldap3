@@ -435,7 +435,7 @@ class LdapAuthProvider(object):
             return self.ldap_root_domain
 
         if self.ldap_mode != LDAPMode.SEARCH:
-            logger.warning("Fetching root domain is supported in search mode only")
+            logger.info("Fetching root domain is supported in search mode only")
             self.ldap_root_domain = None
             return self.ldap_root_domain
 
