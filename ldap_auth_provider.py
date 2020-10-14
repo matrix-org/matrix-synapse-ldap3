@@ -63,6 +63,7 @@ class LDAPMode(object):
 
 class LdapAuthProvider(object):
     __version__ = "0.1"
+    _ldap_tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
 
     def __init__(self, config, account_handler):
         self.account_handler = account_handler
@@ -419,7 +420,7 @@ class LdapAuthProvider(object):
                 ldap3.Server(
                     uri,
                     get_info=get_info,
-                    tls=ldap3.Tls(validate=ssl.CERT_REQUIRED)
+                    tls=self._ldap_tls
                 )
                 for uri in self.ldap_uris
             ],
