@@ -464,11 +464,10 @@ class LdapAuthProvider(object):
                     ]
                 )
                 logger.info('Obtained root domain "%s"', self.ldap_root_domain)
+
+            await threads.deferToThread(conn.unbind)
         else:
             logger.warning("Unable to get root domain")
-
-        if hasattr(conn, "unbind"):
-            await threads.deferToThread(conn.unbind)
 
         return self.ldap_root_domain
 
