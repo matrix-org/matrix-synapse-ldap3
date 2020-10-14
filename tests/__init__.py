@@ -120,8 +120,10 @@ async def _create_db():
 
 
 class _ActiveDirectoryLDAPServer(LDAPServer):
-    """LDAPServer implementation with Active Directory
-    specific attribute rootDomainNamingContext"""
+    """Extends LDAPServer to return AD-specific attributes
+
+    Includes `rootDomainNamingContext` in bind responses.
+    """
     def getRootDSE(self, request, reply):
         root = interfaces.IConnectedLDAPEntry(self.factory)
         reply(pureldap.LDAPSearchResultEntry(
