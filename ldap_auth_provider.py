@@ -86,9 +86,9 @@ class LdapAuthProvider(object):
         self.ldap_active_directory = config.active_directory
         if self.ldap_active_directory:
             self.ldap_default_domain = config.default_domain
-            # This will be set to value of Active Directory root domain of type str
-            # or to None in case of error while retrieving Active Directory root domain
-            self.ldap_root_domain = False
+            # Either: the Active Directory root domain (type str); empty string in case
+            # of error; or None if there was no attempt to fetch root domain yet
+            self.ldap_root_domain = None  # type: Optional[str]
 
     def get_supported_login_types(self):
         return {'m.login.password': ('password',)}
@@ -431,12 +431,13 @@ class LdapAuthProvider(object):
         Returns:
             str: The root domain of Active Directory forest
         """
-        if self.ldap_root_domain is not False:
+        if self.ldap_root_domain is not None:
             return self.ldap_root_domain
+
+        self.ldap_root_domain = ""
 
         if self.ldap_mode != LDAPMode.SEARCH:
             logger.info("Fetching root domain is supported in search mode only")
-            self.ldap_root_domain = None
             return self.ldap_root_domain
 
         server = self._get_server(get_info=ldap3.DSA)
@@ -447,8 +448,6 @@ class LdapAuthProvider(object):
         )
 
         if result:
-            self.ldap_root_domain = None
-
             if (
                 conn.server.info.other
                 and "rootDomainNamingContext" in conn.server.info.other
