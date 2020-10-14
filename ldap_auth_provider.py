@@ -412,7 +412,7 @@ class LdapAuthProvider(object):
             specific info must be read. Defaults to None.
 
         Returns:
-            [ServerPool]: servers groupped to ServerPool
+            Servers grouped in a ServerPool
         """
         return ldap3.ServerPool(
             [
@@ -429,7 +429,7 @@ class LdapAuthProvider(object):
         """Fetches root domain from LDAP and saves it to ``self.ldap_root_domain``
 
         Returns:
-            str: The root domain of Active Directory forest
+            The root domain of Active Directory forest
         """
         if self.ldap_root_domain is not None:
             return self.ldap_root_domain
