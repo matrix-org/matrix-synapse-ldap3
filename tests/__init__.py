@@ -1,15 +1,12 @@
 from asyncio.futures import Future
-from typing import Any, Awaitable
+from typing import Any, Awaitable, Optional
 
 from twisted.internet.endpoints import serverFromString
 from twisted.internet.protocol import ServerFactory
 from twisted.internet import reactor
 from twisted.python.components import registerAdapter
-from ldaptor import interfaces
 from ldaptor.inmemory import fromLDIFFile
 from ldaptor.interfaces import IConnectedLDAPEntry
-from ldaptor.protocols import pureldap
-from ldaptor.protocols.ldap import ldaperrors
 from ldaptor.protocols.ldap.ldapserver import LDAPServer
 try:
     from cStringIO import StringIO as BytesIO
@@ -119,29 +116,13 @@ async def _create_db():
     return db
 
 
-class _ActiveDirectoryLDAPServer(LDAPServer):
-    """Extends LDAPServer to return AD-specific attributes
-
-    Includes `rootDomainNamingContext` in bind responses.
-    """
-    def getRootDSE(self, request, reply):
-        root = interfaces.IConnectedLDAPEntry(self.factory)
-        reply(pureldap.LDAPSearchResultEntry(
-            objectName='',
-            attributes=[('supportedLDAPVersion', ['3']),
-                        ('namingContexts', [root.dn.getText()]),
-                        ('supportedExtension', [
-                            pureldap.LDAPPasswordModifyRequest.oid, ]),
-                        ('rootDomainNamingContext', ['DC=example,DC=org']), ], ))
-        return pureldap.LDAPSearchResultDone(
-            resultCode=ldaperrors.Success.resultCode)
-
-
 class _LDAPServerFactory(ServerFactory):
-    protocol = _ActiveDirectoryLDAPServer
+    protocol = LDAPServer
 
-    def __init__(self, root):
+    def __init__(self, root, ldap_server):
         self.root = root
+        if ldap_server:
+            self.protocol = ldap_server
 
     def buildProtocol(self, addr):
         proto = self.protocol()
@@ -179,11 +160,11 @@ registerAdapter(
 )
 
 
-async def create_ldap_server():
+async def create_ldap_server(ldap_server: Optional[LDAPServer] = None):
     "Returns a context manager that represents the LDAP server."
 
     db = await _create_db()
-    factory = _LDAPServerFactory(db)
+    factory = _LDAPServerFactory(db, ldap_server)
     factory.debug = True
 
     # We just pick an arbitrary port to listen on.
