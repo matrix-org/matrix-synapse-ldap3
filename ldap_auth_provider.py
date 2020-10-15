@@ -468,6 +468,12 @@ class LdapAuthProvider(object):
             )
             logger.info('Obtained root domain "%s"', self.ldap_root_domain)
 
+        if not self.ldap_root_domain:
+            logger.warning(
+                "No valid `rootDomainNamingContext` attribute was found in the RootDSE. "
+                "Logging in using short domain name will be unavailable."
+            )
+
         await threads.deferToThread(conn.unbind)
 
         return self.ldap_root_domain
