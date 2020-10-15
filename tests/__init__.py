@@ -117,10 +117,10 @@ async def _create_db():
 
 
 class _LDAPServerFactory(ServerFactory):
-    def __init__(self, root, ldap_server=LDAPServer):
+    def __init__(self, root, ldap_server_type=LDAPServer):
         self.root = root
-        if ldap_server:
-            self.protocol = ldap_server
+        if ldap_server_type:
+            self.protocol = ldap_server_type
 
     def buildProtocol(self, addr):
         proto = self.protocol()
@@ -158,11 +158,11 @@ registerAdapter(
 )
 
 
-async def create_ldap_server(ldap_server: Optional[LDAPServer] = None):
+async def create_ldap_server(ldap_server_type: Optional[LDAPServer] = None):
     "Returns a context manager that represents the LDAP server."
 
     db = await _create_db()
-    factory = _LDAPServerFactory(db, ldap_server)
+    factory = _LDAPServerFactory(db, ldap_server_type)
     factory.debug = True
 
     # We just pick an arbitrary port to listen on.
