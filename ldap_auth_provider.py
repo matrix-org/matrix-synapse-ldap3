@@ -454,8 +454,7 @@ class LdapAuthProvider(object):
 
         if (
             conn.server.info.other
-            and "rootDomainNamingContext" in conn.server.info.other
-            and conn.server.info.other["rootDomainNamingContext"]
+            and conn.server.info.other.get("rootDomainNamingContext")
         ):
             # conn.server.info.other["rootDomainNamingContext"][0]
             # is of the form DC=example,DC=org
