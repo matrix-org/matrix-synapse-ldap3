@@ -117,9 +117,7 @@ async def _create_db():
 
 
 class _LDAPServerFactory(ServerFactory):
-    protocol = LDAPServer
-
-    def __init__(self, root, ldap_server):
+    def __init__(self, root, ldap_server=LDAPServer):
         self.root = root
         if ldap_server:
             self.protocol = ldap_server
