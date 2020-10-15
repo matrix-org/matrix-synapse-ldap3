@@ -449,7 +449,7 @@ class LdapAuthProvider(object):
         )
 
         if not result:
-            logger.warning("Unable to get root domain")
+            logger.warning("Unable to get root domain due to failed LDAP bind")
             return self.ldap_root_domain
 
         if (
