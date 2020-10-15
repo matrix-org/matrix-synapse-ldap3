@@ -1,5 +1,5 @@
 from asyncio.futures import Future
-from typing import Any, Awaitable, Optional
+from typing import Any, Awaitable, Type
 
 from twisted.internet.endpoints import serverFromString
 from twisted.internet.protocol import ServerFactory
@@ -117,7 +117,7 @@ async def _create_db():
 
 
 class _LDAPServerFactory(ServerFactory):
-    def __init__(self, root, ldap_server_type=LDAPServer):
+    def __init__(self, root, ldap_server_type: Type[LDAPServer] = LDAPServer):
         self.root = root
         if ldap_server_type:
             self.protocol = ldap_server_type
@@ -158,7 +158,7 @@ registerAdapter(
 )
 
 
-async def create_ldap_server(ldap_server_type: Optional[LDAPServer] = None):
+async def create_ldap_server(ldap_server_type: Type[LDAPServer] = None):
     "Returns a context manager that represents the LDAP server."
 
     db = await _create_db()
