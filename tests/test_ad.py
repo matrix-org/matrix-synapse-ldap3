@@ -12,6 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from ldaptor import interfaces
+from ldaptor.protocols import pureldap
+from ldaptor.protocols.ldap import ldaperrors
+from ldaptor.protocols.ldap.ldapserver import LDAPServer
+
 from twisted.internet.defer import ensureDeferred
 from twisted.trial import unittest
 from twisted.internet import defer
@@ -29,10 +34,30 @@ import logging
 logging.basicConfig()
 
 
+class _ActiveDirectoryLDAPServer(LDAPServer):
+    """Extends LDAPServer to return AD-specific attributes
+
+    Includes `rootDomainNamingContext` in bind responses.
+    """
+    def getRootDSE(self, request, reply):
+        root = interfaces.IConnectedLDAPEntry(self.factory)
+        reply(pureldap.LDAPSearchResultEntry(
+            objectName='',
+            attributes=[('supportedLDAPVersion', ['3']),
+                        ('namingContexts', [root.dn.getText()]),
+                        ('supportedExtension', [
+                            pureldap.LDAPPasswordModifyRequest.oid, ]),
+                        ('rootDomainNamingContext', ['DC=example,DC=org']), ], ))
+        return pureldap.LDAPSearchResultDone(
+            resultCode=ldaperrors.Success.resultCode)
+
+
 class AbstractLdapActiveDirectoryTestCase():
     @defer.inlineCallbacks
     def setUp(self):
-        self.ldap_server = yield ensureDeferred(create_ldap_server())
+        self.ldap_server = yield ensureDeferred(
+            create_ldap_server(_ActiveDirectoryLDAPServer)
+        )
         account_handler = Mock(spec_set=["check_user_exists", "get_qualified_user_id"])
         account_handler.check_user_exists.return_value = make_awaitable(True)
         account_handler.get_qualified_user_id = get_qualified_user_id
@@ -75,6 +100,13 @@ class LdapActiveDirectoryTestCase(AbstractLdapActiveDirectoryTestCase, unittest.
         self.assertEqual(result, "@mainuser/main.example.org:test")
 
         result = yield ensureDeferred(self.auth_provider.check_auth(
+            "main\\mainuser",
+            'm.login.password',
+            {"password": "abracadabra"}
+        ))
+        self.assertEqual(result, "@mainuser/main.example.org:test")
+
+        result = yield ensureDeferred(self.auth_provider.check_auth(
             "subsidiary.example.org\\nonmainuser",
             'm.login.password',
             {"password": "simsalabim"}
@@ -82,7 +114,21 @@ class LdapActiveDirectoryTestCase(AbstractLdapActiveDirectoryTestCase, unittest.
         self.assertEqual(result, "@nonmainuser/subsidiary.example.org:test")
 
         result = yield ensureDeferred(self.auth_provider.check_auth(
+            "subsidiary\\nonmainuser",
+            'm.login.password',
+            {"password": "simsalabim"}
+        ))
+        self.assertEqual(result, "@nonmainuser/subsidiary.example.org:test")
+
+        result = yield ensureDeferred(self.auth_provider.check_auth(
             "subsidiary.example.org\\mainuser",
+            'm.login.password',
+            {"password": "changeit"}
+        ))
+        self.assertEqual(result, "@mainuser/subsidiary.example.org:test")
+
+        result = yield ensureDeferred(self.auth_provider.check_auth(
+            "subsidiary\\mainuser",
             'm.login.password',
             {"password": "changeit"}
         ))

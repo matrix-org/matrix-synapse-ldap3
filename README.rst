@@ -116,8 +116,8 @@ Let's say you have several domains in the ``example.com`` forest:
         bind_dn: "cn=hacker,ou=svcaccts,dc=example,dc=com"
         bind_password: "ch33kym0nk3y"
 
-With this configuration the user can log in with either ``main.example.com\someuser``,
-``someuser/main.example.com`` or ``someuser``.
+With this configuration the user can log in with either ``main\someuser``,
+``main.example.com\someuser``, ``someuser/main.example.com`` or ``someuser``.
 
 Users of other domains in the ``example.com`` forest can log in with ``domain\login``
 or ``login/domain``.

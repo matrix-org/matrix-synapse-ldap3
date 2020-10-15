@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Optional
+
 from twisted.internet import threads
 
 
@@ -61,6 +63,7 @@ class LDAPMode(object):
 
 class LdapAuthProvider(object):
     __version__ = "0.1"
+    _ldap_tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
 
     def __init__(self, config, account_handler):
         self.account_handler = account_handler
@@ -84,6 +87,9 @@ class LdapAuthProvider(object):
         self.ldap_active_directory = config.active_directory
         if self.ldap_active_directory:
             self.ldap_default_domain = config.default_domain
+            # Either: the Active Directory root domain (type str); empty string in case
+            # of error; or None if there was no attempt to fetch root domain yet
+            self.ldap_root_domain = None  # type: Optional[str]
 
     def get_supported_login_types(self):
         return {'m.login.password': ('password',)}
@@ -117,17 +123,14 @@ class LdapAuthProvider(object):
 
         if self.ldap_active_directory:
             try:
-                (login, domain, localpart) = self._map_login_to_upn(username)
+                (login, domain, localpart) = await self._map_login_to_upn(username)
                 uid_value = login + "@" + domain
                 default_display_name = login
             except ActiveDirectoryUPNException:
                 return False
 
         try:
-            tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
-            server = ldap3.ServerPool(
-                [ldap3.Server(uri, get_info=None, tls=tls) for uri in self.ldap_uris],
-            )
+            server = self._get_server()
             logger.debug(
                 "Attempting LDAP connection with %s",
                 self.ldap_uris
@@ -254,9 +257,7 @@ class LdapAuthProvider(object):
 
         # Talk to LDAP and check if this email/password combo is correct
         try:
-            server = ldap3.ServerPool(
-                [ldap3.Server(uri, get_info=None) for uri in self.ldap_uris],
-            )
+            server = self._get_server()
             logger.debug(
                 "Attempting LDAP connection with %s",
                 self.ldap_uris
@@ -403,6 +404,78 @@ class LdapAuthProvider(object):
             ldap_config.default_domain = config.get("default_domain", None)
 
         return ldap_config
+
+    def _get_server(self, get_info: Optional[str] = None) -> ldap3.ServerPool:
+        """Constructs ServerPool from configured LDAP URIs
+
+        Args:
+            get_info (str, optional): specifies if the server schema and server
+            specific info must be read. Defaults to None.
+
+        Returns:
+            Servers grouped in a ServerPool
+        """
+        return ldap3.ServerPool(
+            [
+                ldap3.Server(
+                    uri,
+                    get_info=get_info,
+                    tls=self._ldap_tls
+                )
+                for uri in self.ldap_uris
+            ],
+        )
+
+    async def _fetch_root_domain(self) -> str:
+        """Fetches root domain from LDAP and saves it to ``self.ldap_root_domain``
+
+        Returns:
+            The root domain of Active Directory forest
+        """
+        if self.ldap_root_domain is not None:
+            return self.ldap_root_domain
+
+        self.ldap_root_domain = ""
+
+        if self.ldap_mode != LDAPMode.SEARCH:
+            logger.info("Fetching root domain is supported in search mode only")
+            return self.ldap_root_domain
+
+        server = self._get_server(get_info=ldap3.DSA)
+        result, conn = await self._ldap_simple_bind(
+            server=server,
+            bind_dn=self.ldap_bind_dn,
+            password=self.ldap_bind_password,
+        )
+
+        if not result:
+            logger.warning("Unable to get root domain due to failed LDAP bind")
+            return self.ldap_root_domain
+
+        if (
+            conn.server.info.other
+            and conn.server.info.other.get("rootDomainNamingContext")
+        ):
+            # conn.server.info.other["rootDomainNamingContext"][0]
+            # is of the form DC=example,DC=org
+            self.ldap_root_domain = ".".join(
+                [
+                    dc.split("=")[1] for dc
+                    in conn.server.info.other["rootDomainNamingContext"][0].split(",")
+                    if "=" in dc
+                ]
+            )
+            logger.info('Obtained root domain "%s"', self.ldap_root_domain)
+
+        if not self.ldap_root_domain:
+            logger.warning(
+                "No valid `rootDomainNamingContext` attribute was found in the RootDSE. "
+                "Logging in using short domain name will be unavailable."
+            )
+
+        await threads.deferToThread(conn.unbind)
+
+        return self.ldap_root_domain
 
     async def _ldap_simple_bind(self, server, bind_dn, password):
         """ Attempt a simple bind with the credentials
@@ -556,7 +629,7 @@ class LdapAuthProvider(object):
             logger.warning("Error during LDAP authentication: %s", e)
             raise
 
-    def _map_login_to_upn(self, username):
+    async def _map_login_to_upn(self, username):
         """Maps user provided login to Active Directory UPN and
         local part of Matrix ID.
 
@@ -577,6 +650,9 @@ class LdapAuthProvider(object):
 
         if '\\' in username:
             (domain, login) = username.lower().rsplit('\\', 1)
+            ldap_root_domain = await self._fetch_root_domain()
+            if ldap_root_domain and not domain.endswith(ldap_root_domain):
+                domain += "." + ldap_root_domain
         elif "/" in username:
             (login, domain) = username.lower().rsplit("/", 1)
         else:
