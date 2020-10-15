@@ -448,26 +448,27 @@ class LdapAuthProvider(object):
             password=self.ldap_bind_password,
         )
 
-        if result:
-            if (
-                conn.server.info.other
-                and "rootDomainNamingContext" in conn.server.info.other
-                and conn.server.info.other["rootDomainNamingContext"]
-            ):
-                # conn.server.info.other["rootDomainNamingContext"][0]
-                # is of the form DC=example,DC=org
-                self.ldap_root_domain = ".".join(
-                    [
-                        dc.split("=")[1] for dc
-                        in conn.server.info.other["rootDomainNamingContext"][0].split(",")
-                        if "=" in dc
-                    ]
-                )
-                logger.info('Obtained root domain "%s"', self.ldap_root_domain)
-
-            await threads.deferToThread(conn.unbind)
-        else:
+        if not result:
             logger.warning("Unable to get root domain")
+            return self.ldap_root_domain
+
+        if (
+            conn.server.info.other
+            and "rootDomainNamingContext" in conn.server.info.other
+            and conn.server.info.other["rootDomainNamingContext"]
+        ):
+            # conn.server.info.other["rootDomainNamingContext"][0]
+            # is of the form DC=example,DC=org
+            self.ldap_root_domain = ".".join(
+                [
+                    dc.split("=")[1] for dc
+                    in conn.server.info.other["rootDomainNamingContext"][0].split(",")
+                    if "=" in dc
+                ]
+            )
+            logger.info('Obtained root domain "%s"', self.ldap_root_domain)
+
+        await threads.deferToThread(conn.unbind)
 
         return self.ldap_root_domain
 
