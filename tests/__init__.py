@@ -158,7 +158,7 @@ registerAdapter(
 )
 
 
-async def create_ldap_server(ldap_server_type: Type[LDAPServer] = None):
+async def create_ldap_server(ldap_server_type: Type[LDAPServer] = LDAPServer):
     "Returns a context manager that represents the LDAP server."
 
     db = await _create_db()
