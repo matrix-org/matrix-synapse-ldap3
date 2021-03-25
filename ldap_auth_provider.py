@@ -324,8 +324,8 @@ class LdapAuthProvider(object):
         Returns:
             user_id (str): User ID of the newly registered user.
         """
-        # Get full user id from localpart
-        user_id = self.account_handler.get_qualified_user_id(localpart)
+        # Get full user id from lowercased localpart
+        user_id = self.account_handler.get_qualified_user_id(localpart.lower())
 
         if await self.account_handler.check_user_exists(user_id):
             # exists, authentication complete
