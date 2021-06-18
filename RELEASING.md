@@ -8,24 +8,38 @@ You will need push access to this repo as well as an account on PyPi with push
 access to the
 [matrix-synapse-ldap3](https://pypi.org/project/matrix-synapse-ldap3/) package.
 
-## Git repository
-
 1. Edit the `__version__` variable of `ldap_auth_provider.py` to the new release
 version. This repository uses [Semantic Versioning](https://semver.org/).
 
-1. Commit and push with the commit message `X.Y.Z`.
+1. Set a variable to the version number for convenience:
+   ```sh
+   ver=$(python3 -c 'import ldap_auth_provider; print(ldap_auth_provider.__version__)')
+   ```
 
-1. Create a git tag with `git tag -s vX.Y.Z`. Set the first line of the message
-   to `vX.Y.Z`, and the rest to the changes since the last release (looking at
-   the commit history can help).
+1. Push your changes:
+   ```sh
+   git add -u && git commit -m $ver && git push
+   ```
 
-1. Push the tag with `git push origin tag vX.Y.Z`
+1. Create a signed git tag for the release:
+   ```sh
+   git tag -s v$ver
+   ```
 
-## Uploading to PyPi
+   Set the first line of the message to `vX.Y.Z`, and the rest to the changes since the last release (hint: `git log --pretty=%s --reverse v<old ver>...`)
 
-Ensure you have access to the `twine` command.
+1. Push the tag:
+   ```sh
+   git push origin tag v$ver
+   ```
 
-1. Run `python setup.py sdist` to build the package
+1. Build and upload to PyPI:
+   ```sh
+   python setup.py sdist
+   twine upload dist/matrix-synapse-ldap3-$ver.tar.gz
+   ```
 
-1. `twine upload dist/matrix-synapse-ldap3-X.Y.Z.tar.gz` to upload the package
-   to PyPi.
+1. Create release on GH project page:
+   ```sh
+   xdg-open https://github.com/matrix-org/matrix-synapse-ldap3/releases/edit/v$ver
+   ```
