@@ -26,13 +26,6 @@ import synapse
 
 __version__ = "0.1.4"
 
-
-# ldap3 v2 changed ldap3.AUTH_SIMPLE -> ldap3.SIMPLE
-try:
-    LDAP_AUTH_SIMPLE = ldap3.AUTH_SIMPLE
-except AttributeError:
-    LDAP_AUTH_SIMPLE = ldap3.SIMPLE
-
 logger = logging.getLogger(__name__)
 
 
@@ -472,7 +465,7 @@ class LdapAuthProvider(object):
             conn = await threads.deferToThread(
                 ldap3.Connection,
                 server, bind_dn, password,
-                authentication=LDAP_AUTH_SIMPLE,
+                authentication=ldap3.SIMPLE,
                 read_only=True,
             )
             logger.debug(
