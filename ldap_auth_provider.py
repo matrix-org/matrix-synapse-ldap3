@@ -13,38 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+import ssl
 from typing import Optional
 
+from pkg_resources import parse_version
 from twisted.internet import threads
-
 
 import ldap3
 import ldap3.core.exceptions
-
-import ssl
-
-import logging
 import synapse
 
-from pkg_resources import parse_version
-
-
 __version__ = "0.1.4"
-
-
-try:
-    import ldap3
-    import ldap3.core.exceptions
-
-    # ldap3 v2 changed ldap3.AUTH_SIMPLE -> ldap3.SIMPLE
-    try:
-        LDAP_AUTH_SIMPLE = ldap3.AUTH_SIMPLE
-    except AttributeError:
-        LDAP_AUTH_SIMPLE = ldap3.SIMPLE
-except ImportError:  # pragma: no cover
-    ldap3 = None
-    pass
-
 
 logger = logging.getLogger(__name__)
 
@@ -62,17 +42,10 @@ class LDAPMode(object):
 
 
 class LdapAuthProvider(object):
-    __version__ = "0.1"
     _ldap_tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
 
     def __init__(self, config, account_handler):
         self.account_handler = account_handler
-
-        if not ldap3:  # pragma: no cover
-            raise RuntimeError(
-                'Missing ldap3 library. '
-                'This is required for LDAP Authentication.'
-            )
 
         self.ldap_mode = config.mode
         self.ldap_uris = [config.uri] if isinstance(config.uri, str) else config.uri
@@ -492,7 +465,7 @@ class LdapAuthProvider(object):
             conn = await threads.deferToThread(
                 ldap3.Connection,
                 server, bind_dn, password,
-                authentication=LDAP_AUTH_SIMPLE,
+                authentication=ldap3.SIMPLE,
                 read_only=True,
             )
             logger.debug(
