@@ -1,9 +1,9 @@
 include *.in
 include *.py
+include *.md
 include LICENSE
 include tox.ini
 include requirements.txt
 include .coveragerc
 include .codecov.yml
 recursive-include tests *.py
-recursive-include docs *.md
