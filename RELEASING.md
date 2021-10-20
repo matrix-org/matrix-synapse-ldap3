@@ -8,6 +8,8 @@ You will need push access to this repo as well as an account on PyPi with push
 access to the
 [matrix-synapse-ldap3](https://pypi.org/project/matrix-synapse-ldap3/) package.
 
+You will need to install the `build` and `twine` packages.
+
 1. Edit the `__version__` variable of `ldap_auth_provider.py` to the new release
 version. This repository uses [Semantic Versioning](https://semver.org/).
 
@@ -35,8 +37,8 @@ version. This repository uses [Semantic Versioning](https://semver.org/).
 
 1. Build and upload to PyPI:
    ```sh
-   python setup.py sdist
-   twine upload dist/matrix-synapse-ldap3-$ver.tar.gz
+   python -m build
+   twine upload dist/matrix-synapse-ldap3-$ver.tar.gz dist/matrix_synapse_ldap3-$ver-py3-none-any.whl
    ```
 
 1. Create release on GH project page:
