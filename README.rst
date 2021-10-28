@@ -10,7 +10,9 @@ that offers more fully-featured integration.
 Installation
 ------------
 - Included as standard in the deb packages and docker images from matrix.org.
-- If you installed into a virtualenv: `pip install matrix-synapse-ldap3`.
+- If you installed into a virtualenv:
+    - Ensure pip is up-to-date: `pip install -U pip`.
+    - Install the LDAP password provider: `pip install matrix-synapse-ldap3`.
 - For other installation mechanisms, see the documentation provided by the maintainer.
 
 Usage
