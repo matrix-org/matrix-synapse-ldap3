@@ -15,7 +15,8 @@
 
 import logging
 import ssl
-from typing import Optional
+import typing
+from typing import Dict, Tuple, Optional
 
 from pkg_resources import parse_version
 from twisted.internet import threads
@@ -23,6 +24,9 @@ from twisted.internet import threads
 import ldap3
 import ldap3.core.exceptions
 import synapse
+
+if typing.TYPE_CHECKING:
+    from synapse.module_api import ModuleApi
 
 __version__ = "0.1.5"
 
@@ -48,8 +52,31 @@ SUPPORTED_LOGIN_FIELDS = ('password',)
 class LdapAuthProvider:
     _ldap_tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
 
-    def __init__(self, config, account_handler):
-        self.account_handler = account_handler
+    def __init__(self, config, account_handler=None, api: Optional["ModuleApi"] = None):
+        if api is not None:
+            # The Module API is a drop-in replacement for all the account handler
+            # functions that this module uses
+            self.account_handler = api
+
+            api.register_password_auth_provider_callbacks(
+                auth_checkers={
+                    (SUPPORTED_LOGIN_TYPE, SUPPORTED_LOGIN_FIELDS): self.check_auth
+                },
+                check_3pid_auth=self.check_3pid_auth
+            )
+        else:
+            assert account_handler is not None, "The module seems to be using neither the modern nor legacy API"
+            self.account_handler = account_handler
+
+            if parse_version(synapse.__version__) >= parse_version("1.46.0"):
+                # The legacy interface is being used despite it being possible to use
+                # the modern interface in this version of Synapse
+                logger.warning(
+                    "DEPRECATION NOTICE: "
+                    "The Synapse LDAP auth provider is being used with the legacy auth provider interface. "
+                    "Please migrate your configuration to use the Module API, "
+                    "which is compatible with Synapse 1.46.0 and later."
+                )
 
         self.ldap_mode = config.mode
         self.ldap_uris = [config.uri] if isinstance(config.uri, str) else config.uri
