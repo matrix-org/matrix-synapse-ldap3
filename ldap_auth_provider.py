@@ -57,6 +57,10 @@ class _LdapConfig:
     default_domain: Optional[str] = None
 
 
+SUPPORTED_LOGIN_TYPE = "m.login.password"
+SUPPORTED_LOGIN_FIELDS = ('password',)
+
+
 class LdapAuthProvider:
     _ldap_tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
 
@@ -81,7 +85,7 @@ class LdapAuthProvider:
             self.ldap_root_domain = None  # type: Optional[str]
 
     def get_supported_login_types(self):
-        return {"m.login.password": ("password",)}
+        return {SUPPORTED_LOGIN_TYPE: SUPPORTED_LOGIN_FIELDS}
 
     async def check_auth(self, username, login_type, login_dict):
         """Attempt to authenticate a user against an LDAP Server
