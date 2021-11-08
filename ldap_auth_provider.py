@@ -65,15 +65,16 @@ class LdapAuthProvider:
                 check_3pid_auth=self.check_3pid_auth
             )
         else:
-            assert account_handler is not None, "The module seems to be using neither the modern nor legacy API"
+            if account_handler is None:
+                raise RuntimeError("Module seems to use neither modern nor legacy API")
             self.account_handler = account_handler
 
             if parse_version(synapse.__version__) >= parse_version("1.46.0"):
                 # The legacy interface is being used despite it being possible to use
                 # the modern interface in this version of Synapse
                 logger.warning(
-                    "DEPRECATION NOTICE: "
-                    "The Synapse LDAP auth provider is being used with the legacy auth provider interface. "
+                    "DEPRECATION NOTICE: The Synapse LDAP auth provider is being "
+                    "used with the legacy auth provider interface. "
                     "Please migrate your configuration to use the Module API, "
                     "which is compatible with Synapse 1.46.0 and later."
                 )
