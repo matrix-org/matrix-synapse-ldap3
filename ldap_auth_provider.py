@@ -16,7 +16,7 @@
 import logging
 import ssl
 import typing
-from typing import Dict, Tuple, Optional
+from typing import Optional
 
 from pkg_resources import parse_version
 from twisted.internet import threads
