@@ -18,12 +18,12 @@ Installation
 Usage
 -----
 
-Example synapse config:
+Example Synapse configuration:
 
 .. code:: yaml
 
-   password_providers:
-    - module: "ldap_auth_provider.LdapAuthProvider"
+   modules:
+    - module: "ldap_auth_provider.LdapAuthProviderModule"
       config:
         enabled: true
         uri: "ldap://ldap.example.com:389"
@@ -42,8 +42,8 @@ Default HA strategy of ldap3.ServerPool is employed, so first available server i
 
 .. code:: yaml
 
-   password_providers:
-    - module: "ldap_auth_provider.LdapAuthProvider"
+   modules:
+    - module: "ldap_auth_provider.LdapAuthProviderModule"
       config:
         enabled: true
         uri:
@@ -65,8 +65,8 @@ in search mode is provided below:
 
 .. code:: yaml
 
-   password_providers:
-    - module: "ldap_auth_provider.LdapAuthProvider"
+   modules:
+    - module: "ldap_auth_provider.LdapAuthProviderModule"
       config:
         enabled: true
         mode: "search"
@@ -100,8 +100,8 @@ Let's say you have several domains in the ``example.com`` forest:
 
 .. code:: yaml
 
-   password_providers:
-    - module: "ldap_auth_provider.LdapAuthProvider"
+   modules:
+    - module: "ldap_auth_provider.LdapAuthProviderModule"
       config:
         enabled: true
         mode: "search"
