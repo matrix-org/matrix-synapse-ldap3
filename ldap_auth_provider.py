@@ -16,7 +16,7 @@
 import logging
 import ssl
 import typing
-from typing import Optional
+from typing import Optional, Union
 
 from pkg_resources import parse_version
 from twisted.internet import threads
@@ -27,6 +27,10 @@ import synapse
 
 if typing.TYPE_CHECKING:
     from synapse.module_api import ModuleApi
+    # The AuthHandler import must be kept in the TYPE_CHECKING guard because
+    # it's a Synapse internal class.
+    # It won't be used when we fully switch over to the Module API.
+    from synapse.handlers.auth import AuthHandler
 
 __version__ = "0.1.5"
 
@@ -52,32 +56,8 @@ SUPPORTED_LOGIN_FIELDS = ('password',)
 class LdapAuthProvider:
     _ldap_tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
 
-    def __init__(self, config, account_handler=None, api: Optional["ModuleApi"] = None):
-        if api is not None:
-            # The Module API is a drop-in replacement for all the account handler
-            # functions that this module uses
-            self.account_handler = api
-
-            api.register_password_auth_provider_callbacks(
-                auth_checkers={
-                    (SUPPORTED_LOGIN_TYPE, SUPPORTED_LOGIN_FIELDS): self.check_auth
-                },
-                check_3pid_auth=self.check_3pid_auth
-            )
-        else:
-            if account_handler is None:
-                raise RuntimeError("Module seems to use neither modern nor legacy API")
-            self.account_handler = account_handler
-
-            if parse_version(synapse.__version__) >= parse_version("1.46.0"):
-                # The legacy interface is being used despite it being possible to use
-                # the modern interface in this version of Synapse
-                logger.warning(
-                    "DEPRECATION NOTICE: The Synapse LDAP auth provider is being "
-                    "used with the legacy auth provider interface. "
-                    "Please migrate your configuration to use the Module API, "
-                    "which is compatible with Synapse 1.46.0 and later."
-                )
+    def __init__(self, config, account_handler: Union["ModuleApi", "AuthHandler"] = None):
+        self.account_handler = account_handler
 
         self.ldap_mode = config.mode
         self.ldap_uris = [config.uri] if isinstance(config.uri, str) else config.uri
@@ -675,6 +655,22 @@ class LdapAuthProvider:
             localpart = login + "/" + domain
 
         return (login, domain, localpart)
+
+
+class LdapAuthProviderModule(LdapAuthProvider):
+    def __init__(self, config, api: "ModuleApi"):
+        # The Module API is a API-compatible in such a way that it's a drop-in
+        # replacement for the account handler, where this module is concerned.
+        super(LdapAuthProviderModule, self).__init__(config, account_handler=api)
+
+        # Register callbacks, since the generic module API requires us to
+        # explicitly tell it what callbacks we want.
+        api.register_password_auth_provider_callbacks(
+            auth_checkers={
+                (SUPPORTED_LOGIN_TYPE, SUPPORTED_LOGIN_FIELDS): self.check_auth
+            },
+            check_3pid_auth=self.check_3pid_auth
+        )
 
 
 def _require_keys(config, required):
