@@ -58,12 +58,12 @@ class AbstractLdapActiveDirectoryTestCase():
         self.ldap_server = yield ensureDeferred(
             create_ldap_server(_ActiveDirectoryLDAPServer)
         )
-        account_handler = Mock(spec_set=["check_user_exists", "get_qualified_user_id"])
-        account_handler.check_user_exists.return_value = make_awaitable(True)
-        account_handler.get_qualified_user_id = get_qualified_user_id
+        module_api = Mock(spec_set=["check_user_exists", "get_qualified_user_id"])
+        module_api.check_user_exists.return_value = make_awaitable(True)
+        module_api.get_qualified_user_id = get_qualified_user_id
 
         self.auth_provider = create_auth_provider(
-            self.ldap_server, account_handler,
+            self.ldap_server, module_api,
             config=self.getConfig(),
         )
 

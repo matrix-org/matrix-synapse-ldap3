@@ -13,7 +13,7 @@ try:
 except ImportError:
     from io import BytesIO
 
-from ldap_auth_provider import LdapAuthProvider
+from ldap_auth_provider import LdapAuthProviderModule
 
 
 LDIF = b"""\
@@ -172,13 +172,13 @@ async def create_ldap_server(ldap_server_type: Type[LDAPServer] = LDAPServer):
     return _LdapServer(listener)
 
 
-def create_auth_provider(server, account_handler, config=None):
-    "Creates an LdapAuthProvider from an LDAP server and a mock account_handler"
+def create_auth_provider(server, api, config=None):
+    "Creates an LdapAuthProviderModule from an LDAP server and a mock Module API"
 
     if config:
-        config = LdapAuthProvider.parse_config(config)
+        config = LdapAuthProviderModule.parse_config(config)
     else:
-        config = LdapAuthProvider.parse_config({
+        config = LdapAuthProviderModule.parse_config({
             "enabled": True,
             "uri": "ldap://localhost:%d" % server.listener.getHost().port,
             "base": "ou=people,dc=example,dc=org",
@@ -189,7 +189,7 @@ def create_auth_provider(server, account_handler, config=None):
             },
         })
 
-    return LdapAuthProvider(config, account_handler=account_handler)
+    return LdapAuthProviderModule(config, api=api)
 
 
 def make_awaitable(result: Any) -> Awaitable[Any]:
