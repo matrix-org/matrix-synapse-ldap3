@@ -16,7 +16,7 @@
 import logging
 import ssl
 import typing
-from typing import Any, Optional, Union
+from typing import Any, Dict, Literal, Optional, Tuple, Union
 
 from pkg_resources import parse_version
 from twisted.internet import threads
@@ -75,10 +75,10 @@ class LdapAuthProvider:
             # of error; or None if there was no attempt to fetch root domain yet
             self.ldap_root_domain = None  # type: Optional[str]
 
-    def get_supported_login_types(self):
+    def get_supported_login_types(self) -> Dict[str, Tuple[str, ...]]:
         return {SUPPORTED_LOGIN_TYPE: SUPPORTED_LOGIN_FIELDS}
 
-    async def check_auth(self, username, login_type, login_dict):
+    async def check_auth(self, username, login_type, login_dict) -> Union[str, bool]:
         """ Attempt to authenticate a user against an LDAP Server
             and register an account if none exists.
 
@@ -157,6 +157,8 @@ class LdapAuthProvider:
                     )
                 )
 
+            assert isinstance(conn, ldap3.Connection)
+
             try:
                 logger.info(
                     "User authenticated against LDAP server: %s",
@@ -218,7 +220,7 @@ class LdapAuthProvider:
             logger.warning("Error during ldap authentication: %s", e)
             return False
 
-    async def check_3pid_auth(self, medium, address, password):
+    async def check_3pid_auth(self, medium, address, password) -> Optional[str]:
         """ Handle authentication against thirdparty login types, such as email
 
             Args:
@@ -297,7 +299,7 @@ class LdapAuthProvider:
             logger.warning("Error during ldap authentication: %s", e)
             raise
 
-    async def register_user(self, localpart, name, email_address):
+    async def register_user(self, localpart, name, email_address) -> str:
         """Register a Synapse user, first checking if they exist.
 
         Args:
@@ -343,7 +345,7 @@ class LdapAuthProvider:
         return user_id
 
     @staticmethod
-    def parse_config(config):
+    def parse_config(config) -> "_LdapConfig":
         class _LdapConfig(object):
             pass
 
@@ -436,6 +438,8 @@ class LdapAuthProvider:
             logger.warning("Unable to get root domain due to failed LDAP bind")
             return self.ldap_root_domain
 
+        assert isinstance(conn, ldap3.Connection)
+
         if (
             conn.server.info.other
             and conn.server.info.other.get("rootDomainNamingContext")
@@ -461,7 +465,7 @@ class LdapAuthProvider:
 
         return self.ldap_root_domain
 
-    async def _ldap_simple_bind(self, server, bind_dn, password):
+    async def _ldap_simple_bind(self, server, bind_dn, password) -> Tuple[bool, Optional[ldap3.Connection]]:
         """ Attempt a simple bind with the credentials
             given by the user against the LDAP server.
 
@@ -540,6 +544,8 @@ class LdapAuthProvider:
 
             if not result:
                 return (False, None, None)
+
+            assert isinstance(conn, ldap3.Connection)
 
             # Construct search filter
             query = ""
