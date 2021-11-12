@@ -58,7 +58,7 @@ class _LdapConfig:
 
 
 SUPPORTED_LOGIN_TYPE = "m.login.password"
-SUPPORTED_LOGIN_FIELDS = ('password',)
+SUPPORTED_LOGIN_FIELDS = ("password",)
 
 
 class LdapAuthProvider:
@@ -84,7 +84,7 @@ class LdapAuthProvider:
             # of error; or None if there was no attempt to fetch root domain yet
             self.ldap_root_domain = None  # type: Optional[str]
 
-    def get_supported_login_types(self):
+    def get_supported_login_types(self) -> Dict[str, Tuple[str, ...]]:
         return {SUPPORTED_LOGIN_TYPE: SUPPORTED_LOGIN_FIELDS}
 
     async def check_auth(self, username, login_type, login_dict):
@@ -159,6 +159,8 @@ class LdapAuthProvider:
                     "Invalid LDAP mode specified: {mode}".format(mode=self.ldap_mode)
                 )
 
+            assert isinstance(conn, ldap3.Connection)
+
             try:
                 logger.info("User authenticated against LDAP server: %s", conn)
             except NameError:  # pragma: no cover
@@ -218,7 +220,7 @@ class LdapAuthProvider:
             logger.warning("Error during ldap authentication: %s", e)
             return False
 
-    async def check_3pid_auth(self, medium, address, password):
+    async def check_3pid_auth(self, medium, address, password) -> Optional[str]:
         """Handle authentication against thirdparty login types, such as email
 
         Args:
@@ -296,7 +298,7 @@ class LdapAuthProvider:
             logger.warning("Error during ldap authentication: %s", e)
             raise
 
-    async def register_user(self, localpart, name, email_address):
+    async def register_user(self, localpart, name, email_address) -> str:
         """Register a Synapse user, first checking if they exist.
 
         Args:
@@ -341,7 +343,7 @@ class LdapAuthProvider:
         return user_id
 
     @staticmethod
-    def parse_config(config):
+    def parse_config(config) -> "_LdapConfig":
         # verify config sanity
         _require_keys(
             config,
@@ -434,6 +436,8 @@ class LdapAuthProvider:
             logger.warning("Unable to get root domain due to failed LDAP bind")
             return self.ldap_root_domain
 
+        assert isinstance(conn, ldap3.Connection)
+
         if conn.server.info.other and conn.server.info.other.get(
             "rootDomainNamingContext"
         ):
@@ -460,7 +464,9 @@ class LdapAuthProvider:
 
         return self.ldap_root_domain
 
-    async def _ldap_simple_bind(self, server, bind_dn, password):
+    async def _ldap_simple_bind(
+        self, server, bind_dn, password
+    ) -> Tuple[bool, Optional[ldap3.Connection]]:
         """Attempt a simple bind with the credentials
         given by the user against the LDAP server.
 
@@ -539,6 +545,8 @@ class LdapAuthProvider:
 
             if not result:
                 return (False, None, None)
+
+            assert isinstance(conn, ldap3.Connection)
 
             # Construct search filter
             query = ""
