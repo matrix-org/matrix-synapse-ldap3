@@ -49,6 +49,10 @@ SUPPORTED_LOGIN_TYPE = "m.login.password"
 SUPPORTED_LOGIN_FIELDS = ('password',)
 
 
+class _LdapConfig(object):
+    pass
+
+
 class LdapAuthProvider:
     _ldap_tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
 
@@ -346,9 +350,6 @@ class LdapAuthProvider:
 
     @staticmethod
     def parse_config(config) -> "_LdapConfig":
-        class _LdapConfig(object):
-            pass
-
         ldap_config: Any = _LdapConfig()
 
         ldap_config.enabled = config.get("enabled", False)
