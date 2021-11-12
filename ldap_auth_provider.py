@@ -347,7 +347,7 @@ class LdapAuthProvider:
         class _LdapConfig(object):
             pass
 
-        ldap_config = _LdapConfig()
+        ldap_config: Any = _LdapConfig()
 
         ldap_config.enabled = config.get("enabled", False)
 
