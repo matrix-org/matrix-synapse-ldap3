@@ -16,7 +16,7 @@
 import logging
 import ssl
 import typing
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from pkg_resources import parse_version
 from twisted.internet import threads
@@ -27,10 +27,6 @@ import synapse
 
 if typing.TYPE_CHECKING:
     from synapse.module_api import ModuleApi
-    # The AuthHandler import must be kept in the TYPE_CHECKING guard because
-    # it's a Synapse internal class.
-    # It won't be used when we fully switch over to the Module API.
-    from synapse.handlers.auth import AuthHandler
 
 __version__ = "0.1.5"
 
@@ -56,8 +52,11 @@ SUPPORTED_LOGIN_FIELDS = ('password',)
 class LdapAuthProvider:
     _ldap_tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
 
-    def __init__(self, config, account_handler: Union["ModuleApi", "AuthHandler"] = None):
-        self.account_handler = account_handler
+    def __init__(self, config, account_handler: "ModuleApi"):
+        # Since at least as far back as Synapse v1.24.0, this 'account handler'
+        # is just the Module API under a different name.
+        # See: https://github.com/matrix-org/synapse/commit/d3ed93504bb6bb8ad138e356e3c74b6a7286299b
+        self.account_handler: "ModuleApi" = account_handler
 
         self.ldap_mode = config.mode
         self.ldap_uris = [config.uri] if isinstance(config.uri, str) else config.uri
