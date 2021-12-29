@@ -42,13 +42,13 @@ class LDAPMode(object):
 
 
 class LdapAuthProvider(object):
-    _ldap_tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
 
     def __init__(self, config, account_handler):
         self.account_handler = account_handler
 
         self.ldap_mode = config.mode
         self.ldap_uris = [config.uri] if isinstance(config.uri, str) else config.uri
+        self.ldap_tls = ldap3.Tls(validate=ssl.CERT_REQUIRED if config.validate_cert else ssl.CERT_NONE)
         self.ldap_start_tls = config.start_tls
         self.ldap_base = config.base
         self.ldap_attributes = config.attributes
@@ -349,6 +349,7 @@ class LdapAuthProvider(object):
             "attributes",
         ])
 
+        ldap_config.validate_cert = config.get("validate_cert", True)
         ldap_config.uri = config["uri"]
         ldap_config.start_tls = config.get("start_tls", False)
         ldap_config.base = config["base"]
@@ -393,7 +394,7 @@ class LdapAuthProvider(object):
                 ldap3.Server(
                     uri,
                     get_info=get_info,
-                    tls=self._ldap_tls
+                    tls=self.ldap_tls
                 )
                 for uri in self.ldap_uris
             ],
