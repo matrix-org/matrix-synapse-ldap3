@@ -48,7 +48,9 @@ class LdapAuthProvider(object):
 
         self.ldap_mode = config.mode
         self.ldap_uris = [config.uri] if isinstance(config.uri, str) else config.uri
-        self.ldap_tls = ldap3.Tls(validate=ssl.CERT_REQUIRED if config.validate_cert else ssl.CERT_NONE)
+        self.ldap_tls = ldap3.Tls(
+            validate=ssl.CERT_REQUIRED if config.validate_cert else ssl.CERT_NONE
+        )
         self.ldap_start_tls = config.start_tls
         self.ldap_base = config.base
         self.ldap_attributes = config.attributes
