@@ -1,20 +1,20 @@
 from asyncio.futures import Future
 from typing import Any, Awaitable, Type
 
-from twisted.internet.endpoints import serverFromString
-from twisted.internet.protocol import ServerFactory
-from twisted.internet import reactor
-from twisted.python.components import registerAdapter
 from ldaptor.inmemory import fromLDIFFile
 from ldaptor.interfaces import IConnectedLDAPEntry
 from ldaptor.protocols.ldap.ldapserver import LDAPServer
+from twisted.internet import reactor
+from twisted.internet.endpoints import serverFromString
+from twisted.internet.protocol import ServerFactory
+from twisted.python.components import registerAdapter
+
 try:
     from cStringIO import StringIO as BytesIO
 except ImportError:
     from io import BytesIO
 
 from ldap_auth_provider import LdapAuthProvider
-
 
 LDIF = b"""\
 dn: dc=org
@@ -150,11 +150,7 @@ class _LdapServer(object):
 # `root = interfaces.IConnectedLDAPEntry(self.factory)` to get the root
 # of the DIT.  The factory that creates the protocol must therefore
 # be adapted to the IConnectedLDAPEntry interface.
-registerAdapter(
-    lambda x: x.root,
-    _LDAPServerFactory,
-    IConnectedLDAPEntry
-)
+registerAdapter(lambda x: x.root, _LDAPServerFactory, IConnectedLDAPEntry)
 
 
 async def create_ldap_server(ldap_server_type: Type[LDAPServer] = LDAPServer):
@@ -178,16 +174,18 @@ def create_auth_provider(server, account_handler, config=None):
     if config:
         config = LdapAuthProvider.parse_config(config)
     else:
-        config = LdapAuthProvider.parse_config({
-            "enabled": True,
-            "uri": "ldap://localhost:%d" % server.listener.getHost().port,
-            "base": "ou=people,dc=example,dc=org",
-            "attributes": {
-                "uid": "cn",
-                "name": "gn",
-                "mail": "mail",
-            },
-        })
+        config = LdapAuthProvider.parse_config(
+            {
+                "enabled": True,
+                "uri": "ldap://localhost:%d" % server.listener.getHost().port,
+                "base": "ou=people,dc=example,dc=org",
+                "attributes": {
+                    "uid": "cn",
+                    "name": "gn",
+                    "mail": "mail",
+                },
+            }
+        )
 
     return LdapAuthProvider(config, account_handler=account_handler)
 
@@ -204,7 +202,7 @@ def make_awaitable(result: Any) -> Awaitable[Any]:
 
 
 def get_qualified_user_id(username):
-    if not username.startswith('@'):
+    if not username.startswith("@"):
         return "@%s:test" % username
 
     return username

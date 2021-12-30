@@ -17,12 +17,11 @@ import logging
 import ssl
 from typing import Optional
 
-from pkg_resources import parse_version
-from twisted.internet import threads
-
 import ldap3
 import ldap3.core.exceptions
 import synapse
+from pkg_resources import parse_version
+from twisted.internet import threads
 
 __version__ = "0.1.5"
 
@@ -31,12 +30,13 @@ logger = logging.getLogger(__name__)
 
 class ActiveDirectoryUPNException(Exception):
     """Raised in case the user's login credentials cannot be mapped to a UPN"""
+
     pass
 
 
 class LDAPMode(object):
-    SIMPLE = "simple",
-    SEARCH = "search",
+    SIMPLE = ("simple",)
+    SEARCH = ("search",)
 
     LIST = (SIMPLE, SEARCH)
 
@@ -65,16 +65,16 @@ class LdapAuthProvider(object):
             self.ldap_root_domain = None  # type: Optional[str]
 
     def get_supported_login_types(self):
-        return {'m.login.password': ('password',)}
+        return {"m.login.password": ("password",)}
 
     async def check_auth(self, username, login_type, login_dict):
-        """ Attempt to authenticate a user against an LDAP Server
-            and register an account if none exists.
+        """Attempt to authenticate a user against an LDAP Server
+        and register an account if none exists.
 
-            Returns:
-                Canonical user ID if authentication against LDAP was successful
+        Returns:
+            Canonical user ID if authentication against LDAP was successful
         """
-        password = login_dict['password']
+        password = login_dict["password"]
         # According to section 5.1.2. of RFC 4513 an attempt to log in with
         # non-empty DN and empty password is called Unauthenticated
         # Authentication Mechanism of Simple Bind which is used to establish
@@ -104,25 +104,21 @@ class LdapAuthProvider(object):
 
         try:
             server = self._get_server()
-            logger.debug(
-                "Attempting LDAP connection with %s",
-                self.ldap_uris
-            )
+            logger.debug("Attempting LDAP connection with %s", self.ldap_uris)
 
             if self.ldap_mode == LDAPMode.SIMPLE:
                 bind_dn = "{prop}={value},{base}".format(
-                    prop=self.ldap_attributes['uid'],
+                    prop=self.ldap_attributes["uid"],
                     value=uid_value,
-                    base=self.ldap_base
+                    base=self.ldap_base,
                 )
                 result, conn = await self._ldap_simple_bind(
                     server=server, bind_dn=bind_dn, password=password
                 )
                 logger.debug(
-                    'LDAP authentication method simple bind returned: '
-                    '%s (conn: %s)',
+                    "LDAP authentication method simple bind returned: %s (conn: %s)",
                     result,
-                    conn
+                    conn,
                 )
                 if not result:
                     return False
@@ -132,29 +128,22 @@ class LdapAuthProvider(object):
                     server=server, password=password, filters=filters
                 )
                 logger.debug(
-                    'LDAP auth method authenticated search returned: '
-                    '%s (conn: %s)',
+                    "LDAP auth method authenticated search returned: %s (conn: %s)",
                     result,
-                    conn
+                    conn,
                 )
                 if not result:
                     return False
             else:  # pragma: no cover
                 raise RuntimeError(
-                    'Invalid LDAP mode specified: {mode}'.format(
-                        mode=self.ldap_mode
-                    )
+                    "Invalid LDAP mode specified: {mode}".format(mode=self.ldap_mode)
                 )
 
             try:
-                logger.info(
-                    "User authenticated against LDAP server: %s",
-                    conn
-                )
+                logger.info("User authenticated against LDAP server: %s", conn)
             except NameError:  # pragma: no cover
                 logger.warning(
-                    "Authentication method yielded no LDAP connection, "
-                    "aborting!"
+                    "Authentication method yielded no LDAP connection, aborting!"
                 )
                 return False
 
@@ -173,10 +162,12 @@ class LdapAuthProvider(object):
                 if self.ldap_mode == LDAPMode.SEARCH:
                     # search enabled, fetch metadata for account creation from
                     # existing ldap connection
-                    filters = [(self.ldap_attributes['uid'], uid_value)]
+                    filters = [(self.ldap_attributes["uid"], uid_value)]
 
                     result, conn, response = await self._ldap_authenticated_search(
-                        server=server, password=password, filters=filters,
+                        server=server,
+                        password=password,
+                        filters=filters,
                     )
 
                     # These results will always return an array
@@ -208,20 +199,22 @@ class LdapAuthProvider(object):
             return False
 
     async def check_3pid_auth(self, medium, address, password):
-        """ Handle authentication against thirdparty login types, such as email
+        """Handle authentication against thirdparty login types, such as email
 
-            Args:
-                medium (str): Medium of the 3PID (e.g email, msisdn).
-                address (str): Address of the 3PID (e.g bob@example.com for email).
-                password (str): The provided password of the user.
+        Args:
+            medium (str): Medium of the 3PID (e.g email, msisdn).
+            address (str): Address of the 3PID (e.g bob@example.com for email).
+            password (str): The provided password of the user.
 
-            Returns:
-                user_id (str|None): ID of the user if authentication
-                    successful. None otherwise.
+        Returns:
+            user_id (str|None): ID of the user if authentication
+                successful. None otherwise.
         """
         if self.ldap_mode != LDAPMode.SEARCH:
-            logger.debug("3PID LDAP login/register attempted but LDAP search mode "
-                         "not enabled. Bailing.")
+            logger.debug(
+                "3PID LDAP login/register attempted but LDAP search mode "
+                "not enabled. Bailing."
+            )
             return None
 
         # We currently only support email
@@ -231,22 +224,21 @@ class LdapAuthProvider(object):
         # Talk to LDAP and check if this email/password combo is correct
         try:
             server = self._get_server()
-            logger.debug(
-                "Attempting LDAP connection with %s",
-                self.ldap_uris
-            )
+            logger.debug("Attempting LDAP connection with %s", self.ldap_uris)
 
             search_filter = [(self.ldap_attributes["mail"], address)]
             result, conn, response = await self._ldap_authenticated_search(
-                server=server, password=password, filters=search_filter,
+                server=server,
+                password=password,
+                filters=search_filter,
             )
 
             logger.debug(
-                'LDAP auth method authenticated search returned: '
-                '%s (conn: %s) (response: %s)',
+                "LDAP auth method authenticated search returned: "
+                "%s (conn: %s) (response: %s)",
                 result,
                 conn,
-                response
+                response,
             )
 
             # Close connection
@@ -257,9 +249,7 @@ class LdapAuthProvider(object):
                 return None
 
             # Extract the username from the search response from the LDAP server
-            localpart = response["attributes"].get(
-                self.ldap_attributes["uid"], [None]
-            )
+            localpart = response["attributes"].get(self.ldap_attributes["uid"], [None])
             localpart = localpart[0] if len(localpart) == 1 else None
             if self.ldap_active_directory and localpart and "@" in localpart:
                 (login, domain) = localpart.lower().rsplit("@", 1)
@@ -311,17 +301,16 @@ class LdapAuthProvider(object):
         # check if we're running a version of synapse that supports binding emails
         # from password providers
         if parse_version(synapse.__version__) <= parse_version("0.99.3"):
-            user_id, access_token = (
-                await self.account_handler.register(
-                    localpart=localpart, displayname=name,
-                )
+            user_id, access_token = await self.account_handler.register(
+                localpart=localpart,
+                displayname=name,
             )
         else:
             # If Synapse has support, bind emails
-            user_id, access_token = (
-                await self.account_handler.register(
-                    localpart=localpart, displayname=name, emails=emails,
-                )
+            user_id, access_token = await self.account_handler.register(
+                localpart=localpart,
+                displayname=name,
+                emails=emails,
             )
 
         logger.info(
@@ -343,11 +332,14 @@ class LdapAuthProvider(object):
         ldap_config.mode = LDAPMode.SIMPLE
 
         # verify config sanity
-        _require_keys(config, [
-            "uri",
-            "base",
-            "attributes",
-        ])
+        _require_keys(
+            config,
+            [
+                "uri",
+                "base",
+                "attributes",
+            ],
+        )
 
         ldap_config.uri = config["uri"]
         ldap_config.start_tls = config.get("start_tls", False)
@@ -356,21 +348,27 @@ class LdapAuthProvider(object):
 
         if "bind_dn" in config:
             ldap_config.mode = LDAPMode.SEARCH
-            _require_keys(config, [
-                "bind_dn",
-                "bind_password",
-            ])
+            _require_keys(
+                config,
+                [
+                    "bind_dn",
+                    "bind_password",
+                ],
+            )
 
             ldap_config.bind_dn = config["bind_dn"]
             ldap_config.bind_password = config["bind_password"]
             ldap_config.filter = config.get("filter", None)
 
         # verify attribute lookup
-        _require_keys(config['attributes'], [
-            "uid",
-            "name",
-            "mail",
-        ])
+        _require_keys(
+            config["attributes"],
+            [
+                "uid",
+                "name",
+                "mail",
+            ],
+        )
 
         ldap_config.active_directory = config.get("active_directory", False)
         if ldap_config.active_directory:
@@ -390,11 +388,7 @@ class LdapAuthProvider(object):
         """
         return ldap3.ServerPool(
             [
-                ldap3.Server(
-                    uri,
-                    get_info=get_info,
-                    tls=self._ldap_tls
-                )
+                ldap3.Server(uri, get_info=get_info, tls=self._ldap_tls)
                 for uri in self.ldap_uris
             ],
         )
@@ -425,16 +419,17 @@ class LdapAuthProvider(object):
             logger.warning("Unable to get root domain due to failed LDAP bind")
             return self.ldap_root_domain
 
-        if (
-            conn.server.info.other
-            and conn.server.info.other.get("rootDomainNamingContext")
+        if conn.server.info.other and conn.server.info.other.get(
+            "rootDomainNamingContext"
         ):
             # conn.server.info.other["rootDomainNamingContext"][0]
             # is of the form DC=example,DC=org
             self.ldap_root_domain = ".".join(
                 [
-                    dc.split("=")[1] for dc
-                    in conn.server.info.other["rootDomainNamingContext"][0].split(",")
+                    dc.split("=")[1]
+                    for dc in conn.server.info.other["rootDomainNamingContext"][
+                        0
+                    ].split(",")
                     if "=" in dc
                 ]
             )
@@ -451,27 +446,26 @@ class LdapAuthProvider(object):
         return self.ldap_root_domain
 
     async def _ldap_simple_bind(self, server, bind_dn, password):
-        """ Attempt a simple bind with the credentials
-            given by the user against the LDAP server.
+        """Attempt a simple bind with the credentials
+        given by the user against the LDAP server.
 
-            Returns True, LDAP3Connection
-                if the bind was successful
-            Returns False, None
-                if an error occured
+        Returns True, LDAP3Connection
+            if the bind was successful
+        Returns False, None
+            if an error occured
         """
 
         try:
             # bind with the the local user's ldap credentials
             conn = await threads.deferToThread(
                 ldap3.Connection,
-                server, bind_dn, password,
+                server,
+                bind_dn,
+                password,
                 authentication=ldap3.SIMPLE,
                 read_only=True,
             )
-            logger.debug(
-                "Established LDAP connection in simple bind mode: %s",
-                conn
-            )
+            logger.debug("Established LDAP connection in simple bind mode: %s", conn)
 
             if self.ldap_start_tls:
                 await threads.deferToThread(conn.open)
@@ -479,7 +473,7 @@ class LdapAuthProvider(object):
                 logger.debug(
                     "Upgraded LDAP connection in simple bind mode through "
                     "StartTLS: %s",
-                    conn
+                    conn,
                 )
 
             if await threads.deferToThread(conn.bind):
@@ -490,7 +484,8 @@ class LdapAuthProvider(object):
             # BAD: bind failed
             logger.info(
                 "Binding against LDAP failed for '%s' failed: %s",
-                bind_dn, conn.result['description']
+                bind_dn,
+                conn.result["description"],
             )
             await threads.deferToThread(conn.unbind)
             return (False, None)
@@ -546,32 +541,28 @@ class LdapAuthProvider(object):
                 query=query,
             )
 
-            logger.debug(
-                "LDAP search filter: %s",
-                query
-            )
+            logger.debug("LDAP search filter: %s", query)
             await threads.deferToThread(
                 conn.search,
                 search_base=self.ldap_base,
                 search_filter=query,
                 attributes=[
-                    self.ldap_attributes['uid'],
-                    self.ldap_attributes['name'],
-                    self.ldap_attributes['mail'],
+                    self.ldap_attributes["uid"],
+                    self.ldap_attributes["name"],
+                    self.ldap_attributes["mail"],
                 ],
             )
 
             responses = [
                 response
-                for response
-                in conn.response
-                if response['type'] == 'searchResEntry'
+                for response in conn.response
+                if response["type"] == "searchResEntry"
             ]
 
             if len(responses) == 1:
                 # GOOD: found exactly one result
-                user_dn = responses[0]['dn']
-                logger.debug('LDAP search found dn: %s', user_dn)
+                user_dn = responses[0]["dn"]
+                logger.debug("LDAP search found dn: %s", user_dn)
 
                 # unbind and simple bind with user_dn to verify the password
                 # Note: do not use rebind(), for some reason it did not verify
@@ -585,14 +576,12 @@ class LdapAuthProvider(object):
             else:
                 # BAD: found 0 or > 1 results, abort!
                 if len(responses) == 0:
-                    logger.info(
-                        "LDAP search returned no results for '%s'",
-                        filters
-                    )
+                    logger.info("LDAP search returned no results for '%s'", filters)
                 else:
                     logger.info(
                         "LDAP search returned too many (%s) results for '%s'",
-                        len(responses), filters
+                        len(responses),
+                        filters,
                     )
                 await threads.deferToThread(conn.unbind)
 
@@ -621,8 +610,8 @@ class LdapAuthProvider(object):
         domain = self.ldap_default_domain
         localpart = username
 
-        if '\\' in username:
-            (domain, login) = username.lower().rsplit('\\', 1)
+        if "\\" in username:
+            (domain, login) = username.lower().rsplit("\\", 1)
             ldap_root_domain = await self._fetch_root_domain()
             if ldap_root_domain and not domain.endswith(ldap_root_domain):
                 domain += "." + ldap_root_domain
@@ -632,8 +621,8 @@ class LdapAuthProvider(object):
             if not self.ldap_default_domain:
                 logger.info(
                     'No LDAP separator "/" was found in uid "%s" '
-                    'and LDAP default domain was not configured.',
-                    username
+                    "and LDAP default domain was not configured.",
+                    username,
                 )
                 raise ActiveDirectoryUPNException()
 
