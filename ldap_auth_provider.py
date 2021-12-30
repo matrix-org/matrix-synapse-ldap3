@@ -45,8 +45,8 @@ class LDAPMode(object):
     LIST = (SIMPLE, SEARCH)
 
 
-SUPPORTED_LOGIN_TYPE = "m.login.password"
-SUPPORTED_LOGIN_FIELDS = ('password',)
+SUPPORTED_LOGIN_TYPE: str = "m.login.password"
+SUPPORTED_LOGIN_FIELDS: Tuple[str, ...] = ('password',)
 
 
 class _LdapConfig(object):
