@@ -19,6 +19,7 @@ import typing
 from typing import Any, Dict, Literal, Optional, Tuple, Union
 
 from pkg_resources import parse_version
+from synapse.types import JsonDict
 from twisted.internet import threads
 
 import ldap3
@@ -678,10 +679,30 @@ class LdapAuthProviderModule(LdapAuthProvider):
         # explicitly tell it what callbacks we want.
         api.register_password_auth_provider_callbacks(
             auth_checkers={
-                (SUPPORTED_LOGIN_TYPE, SUPPORTED_LOGIN_FIELDS): self.check_auth
+                (SUPPORTED_LOGIN_TYPE, SUPPORTED_LOGIN_FIELDS): self.wrapped_check_auth
             },
-            check_3pid_auth=self.check_3pid_auth
+            check_3pid_auth=self.wrapped_check_3pid_auth
         )
+
+    async def wrapped_check_auth(self, username: str, login_type: str, login_dict: JsonDict) -> Optional[Tuple[str, None]]:
+        """
+        Wrapper between the old-style `check_auth` interface and the new one.
+        """
+        result = await self.check_auth(username, login_type, login_dict)
+        if result is None:
+            return None
+        else:
+            return result, None
+
+    async def wrapped_check_3pid_auth(self, medium: str, address: str, password: str) -> Optional[Tuple[str, None]]:
+        """
+        Wrapper between the old-style `check_3pid_auth` interface and the new one.
+        """
+        result = await self.check_3pid_auth(medium, address, password)
+        if result is None:
+            return None
+        else:
+            return result, None
 
 
 def _require_keys(config, required):
