@@ -15,7 +15,8 @@
 
 import logging
 import ssl
-from typing import Optional
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple, Union
 
 import ldap3
 import ldap3.core.exceptions
@@ -39,6 +40,21 @@ class LDAPMode(object):
     SEARCH = ("search",)
 
     LIST = (SIMPLE, SEARCH)
+
+
+@dataclass
+class _LdapConfig(object):
+    enabled: bool
+    mode: Tuple[str]
+    uri: Union[str, List[str]]
+    start_tls: bool
+    base: str
+    attributes: Dict[str, str]
+    bind_dn: Optional[str] = None
+    bind_password: Optional[str] = None
+    filter: Optional[str] = None
+    active_directory: Optional[str] = None
+    default_domain: Optional[str] = None
 
 
 class LdapAuthProvider(object):
@@ -322,15 +338,6 @@ class LdapAuthProvider(object):
 
     @staticmethod
     def parse_config(config):
-        class _LdapConfig(object):
-            pass
-
-        ldap_config = _LdapConfig()
-
-        ldap_config.enabled = config.get("enabled", False)
-
-        ldap_config.mode = LDAPMode.SIMPLE
-
         # verify config sanity
         _require_keys(
             config,
@@ -341,10 +348,14 @@ class LdapAuthProvider(object):
             ],
         )
 
-        ldap_config.uri = config["uri"]
-        ldap_config.start_tls = config.get("start_tls", False)
-        ldap_config.base = config["base"]
-        ldap_config.attributes = config["attributes"]
+        ldap_config = _LdapConfig(
+            enabled=config.get("enabled", False),
+            mode=LDAPMode.SIMPLE,
+            uri=config["uri"],
+            start_tls=config.get("start_tls", False),
+            base=config["base"],
+            attributes=config["attributes"],
+        )
 
         if "bind_dn" in config:
             ldap_config.mode = LDAPMode.SEARCH
