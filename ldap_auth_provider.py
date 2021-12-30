@@ -691,8 +691,13 @@ class LdapAuthProvider:
 
 
 class LdapAuthProviderModule(LdapAuthProvider):
+    """
+    Wrapper for the LDAP Authentication Provider that supports the new generic module interface,
+    rather than the Password Authentication Provider module interface.
+    """
+
     def __init__(self, config, api: "ModuleApi"):
-        # The Module API is a API-compatible in such a way that it's a drop-in
+        # The Module API is API-compatible in such a way that it's a drop-in
         # replacement for the account handler, where this module is concerned.
         super(LdapAuthProviderModule, self).__init__(config, account_handler=api)
 
