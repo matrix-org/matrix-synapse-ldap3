@@ -116,7 +116,7 @@ class LdapAuthProvider(object):
                     server=server, bind_dn=bind_dn, password=password
                 )
                 logger.debug(
-                    "LDAP authentication method simple bind returned: " "%s (conn: %s)",
+                    "LDAP authentication method simple bind returned: %s (conn: %s)",
                     result,
                     conn,
                 )
@@ -128,7 +128,7 @@ class LdapAuthProvider(object):
                     server=server, password=password, filters=filters
                 )
                 logger.debug(
-                    "LDAP auth method authenticated search returned: " "%s (conn: %s)",
+                    "LDAP auth method authenticated search returned: %s (conn: %s)",
                     result,
                     conn,
                 )
@@ -143,7 +143,7 @@ class LdapAuthProvider(object):
                 logger.info("User authenticated against LDAP server: %s", conn)
             except NameError:  # pragma: no cover
                 logger.warning(
-                    "Authentication method yielded no LDAP connection, " "aborting!"
+                    "Authentication method yielded no LDAP connection, aborting!"
                 )
                 return False
 
