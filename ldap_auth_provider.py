@@ -643,7 +643,6 @@ class LdapAuthProvider:
         """
         login = username.lower()
         domain = self.ldap_default_domain
-        localpart = username
 
         if "\\" in username:
             (domain, login) = username.lower().rsplit("\\", 1)
