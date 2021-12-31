@@ -690,6 +690,22 @@ class LdapAuthProvider:
         return (login, domain, localpart)
 
 
+class LdapAuthProviderModule(LdapAuthProvider):
+    def __init__(self, config, api: "ModuleApi"):
+        # The Module API is a API-compatible in such a way that it's a drop-in
+        # replacement for the account handler, where this module is concerned.
+        super(LdapAuthProviderModule, self).__init__(config, account_handler=api)
+
+        # Register callbacks, since the generic module API requires us to
+        # explicitly tell it what callbacks we want.
+        api.register_password_auth_provider_callbacks(
+            auth_checkers={
+                (SUPPORTED_LOGIN_TYPE, SUPPORTED_LOGIN_FIELDS): self.check_auth
+            },
+            check_3pid_auth=self.check_3pid_auth
+        )
+
+
 def _require_keys(config: Dict[str, Any], required: Iterable[str]) -> None:
     missing = [key for key in required if key not in config]
     if missing:
