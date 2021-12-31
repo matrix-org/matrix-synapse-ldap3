@@ -59,7 +59,6 @@ class _LdapConfig(object):
 
 
 class LdapAuthProvider(object):
-
     def __init__(self, config, account_handler):
         self.account_handler = account_handler
 
