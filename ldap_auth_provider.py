@@ -651,14 +651,13 @@ class LdapAuthProvider:
                 domain += "." + ldap_root_domain
         elif "/" in username:
             (login, domain) = username.lower().rsplit("/", 1)
-        else:
-            if not self.ldap_default_domain:
-                logger.info(
-                    'No LDAP separator "/" was found in uid "%s" '
-                    "and LDAP default domain was not configured.",
-                    username,
-                )
-                raise ActiveDirectoryUPNException()
+        elif domain is None:
+            logger.info(
+                'No LDAP separator "/" was found in uid "%s" '
+                "and LDAP default domain was not configured.",
+                username,
+            )
+            raise ActiveDirectoryUPNException()
 
         if self.ldap_default_domain and domain == self.ldap_default_domain.lower():
             localpart = login
