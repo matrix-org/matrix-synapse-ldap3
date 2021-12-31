@@ -6,4 +6,5 @@ include tox.ini
 include requirements.txt
 include .coveragerc
 include .codecov.yml
+include mypy.ini
 recursive-include tests *.py
