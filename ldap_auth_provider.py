@@ -22,6 +22,7 @@ import ldap3
 import ldap3.core.exceptions
 import synapse
 from pkg_resources import parse_version
+from synapse.module_api import ModuleApi
 from twisted.internet import threads
 
 __version__ = "0.1.5"
@@ -36,10 +37,10 @@ class ActiveDirectoryUPNException(Exception):
 
 
 class LDAPMode:
-    SIMPLE = ("simple",)
-    SEARCH = ("search",)
+    SIMPLE: Tuple[str] = ("simple",)
+    SEARCH: Tuple[str] = ("search",)
 
-    LIST = (SIMPLE, SEARCH)
+    LIST: Tuple[Tuple[str], ...] = (SIMPLE, SEARCH)
 
 
 @dataclass
@@ -57,15 +58,15 @@ class _LdapConfig:
     default_domain: Optional[str] = None
 
 
-SUPPORTED_LOGIN_TYPE = "m.login.password"
-SUPPORTED_LOGIN_FIELDS = ("password",)
+SUPPORTED_LOGIN_TYPE: str = "m.login.password"
+SUPPORTED_LOGIN_FIELDS: Tuple[str, ...] = ("password",)
 
 
 class LdapAuthProvider:
     _ldap_tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
 
-    def __init__(self, config, account_handler):
-        self.account_handler = account_handler
+    def __init__(self, config: _LdapConfig, account_handler: ModuleApi):
+        self.account_handler: ModuleApi = account_handler
 
         self.ldap_mode = config.mode
         self.ldap_uris = [config.uri] if isinstance(config.uri, str) else config.uri
@@ -467,7 +468,7 @@ class LdapAuthProvider:
         return self.ldap_root_domain
 
     async def _ldap_simple_bind(
-        self, server: str, bind_dn: str, password: str
+        self, server: ldap3.ServerPool, bind_dn: str, password: str
     ) -> Tuple[bool, Optional[ldap3.Connection]]:
         """Attempt a simple bind with the credentials
         given by the user against the LDAP server.
