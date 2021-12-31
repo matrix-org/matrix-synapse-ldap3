@@ -48,6 +48,7 @@ class _LdapConfig(object):
     mode: Tuple[str]
     uri: Union[str, List[str]]
     start_tls: bool
+    validate_cert: bool
     base: str
     attributes: Dict[str, str]
     bind_dn: Optional[str] = None
