@@ -220,16 +220,18 @@ class LdapAuthProvider:
             logger.warning("Error during ldap authentication: %s", e)
             return False
 
-    async def check_3pid_auth(self, medium, address, password) -> Optional[str]:
+    async def check_3pid_auth(
+        self, medium: str, address: str, password: str
+    ) -> Optional[str]:
         """Handle authentication against thirdparty login types, such as email
 
         Args:
-            medium (str): Medium of the 3PID (e.g email, msisdn).
-            address (str): Address of the 3PID (e.g bob@example.com for email).
-            password (str): The provided password of the user.
+            medium: Medium of the 3PID (e.g email, msisdn).
+            address: Address of the 3PID (e.g bob@example.com for email).
+            password: The provided password of the user.
 
         Returns:
-            user_id (str|None): ID of the user if authentication
+            user_id: ID of the user if authentication
                 successful. None otherwise.
         """
         if self.ldap_mode != LDAPMode.SEARCH:
@@ -298,16 +300,16 @@ class LdapAuthProvider:
             logger.warning("Error during ldap authentication: %s", e)
             raise
 
-    async def register_user(self, localpart, name, email_address) -> str:
+    async def register_user(self, localpart: str, name: str, email_address: str) -> str:
         """Register a Synapse user, first checking if they exist.
 
         Args:
-            localpart (str): Localpart of the user to register on this homeserver.
-            name (str): Full name of the user.
-            email_address (str): Email address of the user.
+            localpart: Localpart of the user to register on this homeserver.
+            name: Full name of the user.
+            email_address: Email address of the user.
 
         Returns:
-            user_id (str): User ID of the newly registered user.
+            user_id: User ID of the newly registered user.
         """
         # Get full user id from localpart
         user_id = self.account_handler.get_qualified_user_id(localpart)
@@ -397,7 +399,7 @@ class LdapAuthProvider:
         """Constructs ServerPool from configured LDAP URIs
 
         Args:
-            get_info (str, optional): specifies if the server schema and server
+            get_info: specifies if the server schema and server
             specific info must be read. Defaults to None.
 
         Returns:
@@ -515,7 +517,9 @@ class LdapAuthProvider:
             logger.warning("Error during LDAP authentication: %s", e)
             raise
 
-    async def _ldap_authenticated_search(self, server, password, filters):
+    async def _ldap_authenticated_search(
+        self, server: str, password: str, filters: List[Tuple[str, str]]
+    ) -> Tuple[bool, Optional[ldap3.Connection], Any]:
         """Attempt to login with the preconfigured bind_dn and then continue
         searching and filtering within the base_dn.
 
@@ -523,9 +527,9 @@ class LdapAuthProvider:
         the config.
 
         Args:
-            server (str): The LDAP server to connect to.
-            password (str): The user's password.
-            filters (List[Tuple[str,str]]): A list of tuples of key/value
+            server: The LDAP server to connect to.
+            password: The user's password.
+            filters: A list of tuples of key/value
                 pairs to filter the LDAP search by.
 
         Returns:
@@ -614,19 +618,19 @@ class LdapAuthProvider:
             logger.warning("Error during LDAP authentication: %s", e)
             raise
 
-    async def _map_login_to_upn(self, username):
+    async def _map_login_to_upn(self, username: str) -> Tuple[str, str, str]:
         """Maps user provided login to Active Directory UPN and
         local part of Matrix ID.
 
         Args:
-            username (str): The user's login
+            username: The user's login
 
         Raises:
             ActiveDirectoryUPNException: if username can not be
                 mapped to userPrincipalName
 
         Returns:
-            Tuple[str, str, str]: a tuple of Active Directory login,
+            a tuple of Active Directory login,
             Active Directory domain and local part of Matrix ID.
         """
         login = username.lower()
