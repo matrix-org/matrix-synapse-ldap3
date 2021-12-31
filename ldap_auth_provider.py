@@ -268,7 +268,7 @@ class LdapAuthProvider:
 
             # Close connection
             if hasattr(conn, "unbind"):
-                await threads.deferToThread(conn.unbind)
+                await threads.deferToThread(conn.unbind)  # type: ignore[union-attr]
 
             if not result:
                 return None
