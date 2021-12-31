@@ -429,6 +429,10 @@ class LdapAuthProvider:
             return self.ldap_root_domain
 
         server = self._get_server(get_info=ldap3.DSA)
+
+        if self.ldap_bind_dn is None or self.ldap_bind_password is None:
+            raise ValueError("Missing bind DN or bind password")
+
         result, conn = await self._ldap_simple_bind(
             server=server,
             bind_dn=self.ldap_bind_dn,
@@ -542,6 +546,9 @@ class LdapAuthProvider:
         """
 
         try:
+            if self.ldap_bind_dn is None or self.ldap_bind_password is None:
+                raise ValueError("Missing bind DN or bind password")
+
             result, conn = await self._ldap_simple_bind(
                 server=server,
                 bind_dn=self.ldap_bind_dn,
