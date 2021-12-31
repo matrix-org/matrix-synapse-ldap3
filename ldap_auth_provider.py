@@ -16,7 +16,7 @@
 import logging
 import ssl
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import ldap3
 import ldap3.core.exceptions
@@ -467,7 +467,7 @@ class LdapAuthProvider:
         return self.ldap_root_domain
 
     async def _ldap_simple_bind(
-        self, server, bind_dn, password
+        self, server: str, bind_dn: str, password: str
     ) -> Tuple[bool, Optional[ldap3.Connection]]:
         """Attempt a simple bind with the credentials
         given by the user against the LDAP server.
@@ -661,7 +661,7 @@ class LdapAuthProvider:
         return (login, domain, localpart)
 
 
-def _require_keys(config, required):
+def _require_keys(config: Dict[str, Any], required: Iterable[str]) -> None:
     missing = [key for key in required if key not in config]
     if missing:
         raise Exception(
