@@ -35,7 +35,7 @@ class ActiveDirectoryUPNException(Exception):
     pass
 
 
-class LDAPMode(object):
+class LDAPMode:
     SIMPLE = ("simple",)
     SEARCH = ("search",)
 
@@ -43,7 +43,7 @@ class LDAPMode(object):
 
 
 @dataclass
-class _LdapConfig(object):
+class _LdapConfig:
     enabled: bool
     mode: Tuple[str]
     uri: Union[str, List[str]]
@@ -57,7 +57,7 @@ class _LdapConfig(object):
     default_domain: Optional[str] = None
 
 
-class LdapAuthProvider(object):
+class LdapAuthProvider:
     _ldap_tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
 
     def __init__(self, config, account_handler):
