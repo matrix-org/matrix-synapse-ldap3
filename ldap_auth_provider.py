@@ -90,7 +90,8 @@ class LdapAuthProvider(object):
         and register an account if none exists.
 
         Returns:
-            Canonical user ID if authentication against LDAP was successful
+            Canonical user ID if authentication against LDAP was successful,
+            or None if authentication was not successful.
         """
         password: str = login_dict["password"]
         # According to section 5.1.2. of RFC 4513 an attempt to log in with
