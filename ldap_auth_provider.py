@@ -160,7 +160,9 @@ class LdapAuthProvider:
                     "Invalid LDAP mode specified: {mode}".format(mode=self.ldap_mode)
                 )
 
-            assert isinstance(conn, ldap3.Connection)
+            # conn is present because result is True in both cases before
+            # control flows to this point
+            assert conn is not None
 
             try:
                 logger.info("User authenticated against LDAP server: %s", conn)
@@ -442,7 +444,8 @@ class LdapAuthProvider:
             logger.warning("Unable to get root domain due to failed LDAP bind")
             return self.ldap_root_domain
 
-        assert isinstance(conn, ldap3.Connection)
+        # conn is present because result is True
+        assert conn is not None
 
         if conn.server.info.other and conn.server.info.other.get(
             "rootDomainNamingContext"
@@ -557,7 +560,8 @@ class LdapAuthProvider:
             if not result:
                 return (False, None, None)
 
-            assert isinstance(conn, ldap3.Connection)
+            # conn is present because result is True
+            assert conn is not None
 
             # Construct search filter
             query = ""
