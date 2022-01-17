@@ -232,8 +232,7 @@ class LdapAuthProvider:
             password: The provided password of the user.
 
         Returns:
-            user_id: ID of the user if authentication
-                successful. None otherwise.
+            user_id: ID of the user if authentication successful. None otherwise.
         """
         if self.ldap_mode != LDAPMode.SEARCH:
             logger.debug(
@@ -474,8 +473,8 @@ class LdapAuthProvider:
     async def _ldap_simple_bind(
         self, server: ldap3.ServerPool, bind_dn: str, password: str
     ) -> Tuple[bool, Optional[ldap3.Connection]]:
-        """Attempt a simple bind with the credentials
-        given by the user against the LDAP server.
+        """Attempt a simple bind with the credentials given by the user against
+        the LDAP server.
 
         Returns True, LDAP3Connection
             if the bind was successful
@@ -534,8 +533,8 @@ class LdapAuthProvider:
         Args:
             server: The LDAP server to connect to.
             password: The user's password.
-            filters: A list of tuples of key/value
-                pairs to filter the LDAP search by.
+            filters: A list of tuples of key/value pairs to filter the LDAP
+                search by.
 
         Returns:
             Deferred[tuple[bool, LDAP3Connection, response]]: Returns a 3-tuple
@@ -627,19 +626,21 @@ class LdapAuthProvider:
             raise
 
     async def _map_login_to_upn(self, username: str) -> Tuple[str, str, str]:
-        """Maps user provided login to Active Directory UPN and
-        local part of Matrix ID.
+        """Maps user provided login to Active Directory UPN and local part
+        of Matrix ID.
 
         Args:
             username: The user's login
 
         Raises:
-            ActiveDirectoryUPNException: if username can not be
-                mapped to userPrincipalName
+            ActiveDirectoryUPNException: if username can not be mapped to
+            userPrincipalName
 
         Returns:
-            a tuple of Active Directory login,
-            Active Directory domain and local part of Matrix ID.
+            a tuple of:
+                - Active Directory login;
+                - Active Directory domain; and
+                - local part of Matrix ID.
         """
         login = username.lower()
         domain = self.ldap_default_domain
