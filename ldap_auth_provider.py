@@ -88,21 +88,24 @@ class LdapAuthProvider:
     def get_supported_login_types(self) -> Dict[str, Tuple[str, ...]]:
         return {SUPPORTED_LOGIN_TYPE: SUPPORTED_LOGIN_FIELDS}
 
-    async def check_auth(self, username, login_type, login_dict):
+    async def check_auth(
+        self, username: str, login_type: str, login_dict: Dict[str, Any]
+    ) -> Optional[str]:
         """Attempt to authenticate a user against an LDAP Server
         and register an account if none exists.
 
         Returns:
-            Canonical user ID if authentication against LDAP was successful
+            Canonical user ID if authentication against LDAP was successful,
+            or None if authentication was not successful.
         """
-        password = login_dict["password"]
+        password: str = login_dict["password"]
         # According to section 5.1.2. of RFC 4513 an attempt to log in with
         # non-empty DN and empty password is called Unauthenticated
         # Authentication Mechanism of Simple Bind which is used to establish
         # an anonymous authorization state and not suitable for user
         # authentication.
         if not password:
-            return False
+            return None
 
         if username.startswith("@") and ":" in username:
             # username is of the form @foo:bar.com
@@ -121,7 +124,7 @@ class LdapAuthProvider:
                 uid_value = login + "@" + domain
                 default_display_name = login
             except ActiveDirectoryUPNException:
-                return False
+                return None
 
         try:
             server = self._get_server()
@@ -142,7 +145,7 @@ class LdapAuthProvider:
                     conn,
                 )
                 if not result:
-                    return False
+                    return None
             elif self.ldap_mode == LDAPMode.SEARCH:
                 filters = [(self.ldap_attributes["uid"], uid_value)]
                 result, conn, _ = await self._ldap_authenticated_search(
@@ -154,7 +157,7 @@ class LdapAuthProvider:
                     conn,
                 )
                 if not result:
-                    return False
+                    return None
             else:  # pragma: no cover
                 raise RuntimeError(
                     "Invalid LDAP mode specified: {mode}".format(mode=self.ldap_mode)
@@ -170,7 +173,7 @@ class LdapAuthProvider:
                 logger.warning(
                     "Authentication method yielded no LDAP connection, aborting!"
                 )
-                return False
+                return None
 
             # Get full user id from localpart
             user_id = self.account_handler.get_qualified_user_id(localpart)
@@ -217,11 +220,11 @@ class LdapAuthProvider:
 
                 return user_id
 
-            return False
+            return None
 
         except ldap3.core.exceptions.LDAPException as e:
             logger.warning("Error during ldap authentication: %s", e)
-            return False
+            return None
 
     async def check_3pid_auth(
         self, medium: str, address: str, password: str
