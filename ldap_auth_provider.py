@@ -16,12 +16,13 @@
 import logging
 import ssl
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import ldap3
 import ldap3.core.exceptions
 import synapse
 from pkg_resources import parse_version
+from synapse.module_api import ModuleApi
 from twisted.internet import threads
 
 __version__ = "0.1.5"
@@ -35,15 +36,15 @@ class ActiveDirectoryUPNException(Exception):
     pass
 
 
-class LDAPMode(object):
-    SIMPLE = ("simple",)
-    SEARCH = ("search",)
+class LDAPMode:
+    SIMPLE: Tuple[str] = ("simple",)
+    SEARCH: Tuple[str] = ("search",)
 
-    LIST = (SIMPLE, SEARCH)
+    LIST: Tuple[Tuple[str], ...] = (SIMPLE, SEARCH)
 
 
 @dataclass
-class _LdapConfig(object):
+class _LdapConfig:
     enabled: bool
     mode: Tuple[str]
     uri: Union[str, List[str]]
@@ -58,9 +59,13 @@ class _LdapConfig(object):
     default_domain: Optional[str] = None
 
 
-class LdapAuthProvider(object):
-    def __init__(self, config, account_handler):
-        self.account_handler = account_handler
+SUPPORTED_LOGIN_TYPE: str = "m.login.password"
+SUPPORTED_LOGIN_FIELDS: Tuple[str, ...] = ("password",)
+
+
+class LdapAuthProvider:
+    def __init__(self, config: _LdapConfig, account_handler: ModuleApi):
+        self.account_handler: ModuleApi = account_handler
 
         self.ldap_mode = config.mode
         self.ldap_uris = [config.uri] if isinstance(config.uri, str) else config.uri
@@ -82,24 +87,27 @@ class LdapAuthProvider(object):
             # of error; or None if there was no attempt to fetch root domain yet
             self.ldap_root_domain = None  # type: Optional[str]
 
-    def get_supported_login_types(self):
-        return {"m.login.password": ("password",)}
+    def get_supported_login_types(self) -> Dict[str, Tuple[str, ...]]:
+        return {SUPPORTED_LOGIN_TYPE: SUPPORTED_LOGIN_FIELDS}
 
-    async def check_auth(self, username, login_type, login_dict):
+    async def check_auth(
+        self, username: str, login_type: str, login_dict: Dict[str, Any]
+    ) -> Optional[str]:
         """Attempt to authenticate a user against an LDAP Server
         and register an account if none exists.
 
         Returns:
-            Canonical user ID if authentication against LDAP was successful
+            Canonical user ID if authentication against LDAP was successful,
+            or None if authentication was not successful.
         """
-        password = login_dict["password"]
+        password: str = login_dict["password"]
         # According to section 5.1.2. of RFC 4513 an attempt to log in with
         # non-empty DN and empty password is called Unauthenticated
         # Authentication Mechanism of Simple Bind which is used to establish
         # an anonymous authorization state and not suitable for user
         # authentication.
         if not password:
-            return False
+            return None
 
         if username.startswith("@") and ":" in username:
             # username is of the form @foo:bar.com
@@ -118,7 +126,7 @@ class LdapAuthProvider(object):
                 uid_value = login + "@" + domain
                 default_display_name = login
             except ActiveDirectoryUPNException:
-                return False
+                return None
 
         try:
             server = self._get_server()
@@ -139,7 +147,7 @@ class LdapAuthProvider(object):
                     conn,
                 )
                 if not result:
-                    return False
+                    return None
             elif self.ldap_mode == LDAPMode.SEARCH:
                 filters = [(self.ldap_attributes["uid"], uid_value)]
                 result, conn, _ = await self._ldap_authenticated_search(
@@ -151,11 +159,15 @@ class LdapAuthProvider(object):
                     conn,
                 )
                 if not result:
-                    return False
+                    return None
             else:  # pragma: no cover
                 raise RuntimeError(
                     "Invalid LDAP mode specified: {mode}".format(mode=self.ldap_mode)
                 )
+
+            # conn is present because result is True in both cases before
+            # control flows to this point
+            assert conn is not None
 
             try:
                 logger.info("User authenticated against LDAP server: %s", conn)
@@ -163,7 +175,7 @@ class LdapAuthProvider(object):
                 logger.warning(
                     "Authentication method yielded no LDAP connection, aborting!"
                 )
-                return False
+                return None
 
             # Get full user id from localpart
             user_id = self.account_handler.get_qualified_user_id(localpart)
@@ -210,23 +222,24 @@ class LdapAuthProvider(object):
 
                 return user_id
 
-            return False
+            return None
 
         except ldap3.core.exceptions.LDAPException as e:
             logger.warning("Error during ldap authentication: %s", e)
-            return False
+            return None
 
-    async def check_3pid_auth(self, medium, address, password):
+    async def check_3pid_auth(
+        self, medium: str, address: str, password: str
+    ) -> Optional[str]:
         """Handle authentication against thirdparty login types, such as email
 
         Args:
-            medium (str): Medium of the 3PID (e.g email, msisdn).
-            address (str): Address of the 3PID (e.g bob@example.com for email).
-            password (str): The provided password of the user.
+            medium: Medium of the 3PID (e.g email, msisdn).
+            address: Address of the 3PID (e.g bob@example.com for email).
+            password: The provided password of the user.
 
         Returns:
-            user_id (str|None): ID of the user if authentication
-                successful. None otherwise.
+            user_id: ID of the user if authentication successful. None otherwise.
         """
         if self.ldap_mode != LDAPMode.SEARCH:
             logger.debug(
@@ -261,7 +274,7 @@ class LdapAuthProvider(object):
 
             # Close connection
             if hasattr(conn, "unbind"):
-                await threads.deferToThread(conn.unbind)
+                await threads.deferToThread(conn.unbind)  # type: ignore[union-attr]
 
             if not result:
                 return None
@@ -294,16 +307,16 @@ class LdapAuthProvider(object):
             logger.warning("Error during ldap authentication: %s", e)
             raise
 
-    async def register_user(self, localpart, name, email_address):
+    async def register_user(self, localpart: str, name: str, email_address: str) -> str:
         """Register a Synapse user, first checking if they exist.
 
         Args:
-            localpart (str): Localpart of the user to register on this homeserver.
-            name (str): Full name of the user.
-            email_address (str): Email address of the user.
+            localpart: Localpart of the user to register on this homeserver.
+            name: Full name of the user.
+            email_address: Email address of the user.
 
         Returns:
-            user_id (str): User ID of the newly registered user.
+            user_id: User ID of the newly registered user.
         """
         # Get full user id from localpart
         user_id = self.account_handler.get_qualified_user_id(localpart)
@@ -339,7 +352,7 @@ class LdapAuthProvider(object):
         return user_id
 
     @staticmethod
-    def parse_config(config):
+    def parse_config(config) -> "_LdapConfig":
         # verify config sanity
         _require_keys(
             config,
@@ -394,7 +407,7 @@ class LdapAuthProvider(object):
         """Constructs ServerPool from configured LDAP URIs
 
         Args:
-            get_info (str, optional): specifies if the server schema and server
+            get_info: specifies if the server schema and server
             specific info must be read. Defaults to None.
 
         Returns:
@@ -423,6 +436,10 @@ class LdapAuthProvider(object):
             return self.ldap_root_domain
 
         server = self._get_server(get_info=ldap3.DSA)
+
+        if self.ldap_bind_dn is None or self.ldap_bind_password is None:
+            raise ValueError("Missing bind DN or bind password")
+
         result, conn = await self._ldap_simple_bind(
             server=server,
             bind_dn=self.ldap_bind_dn,
@@ -432,6 +449,9 @@ class LdapAuthProvider(object):
         if not result:
             logger.warning("Unable to get root domain due to failed LDAP bind")
             return self.ldap_root_domain
+
+        # conn is present because result is True
+        assert conn is not None
 
         if conn.server.info.other and conn.server.info.other.get(
             "rootDomainNamingContext"
@@ -459,9 +479,11 @@ class LdapAuthProvider(object):
 
         return self.ldap_root_domain
 
-    async def _ldap_simple_bind(self, server, bind_dn, password):
-        """Attempt a simple bind with the credentials
-        given by the user against the LDAP server.
+    async def _ldap_simple_bind(
+        self, server: ldap3.ServerPool, bind_dn: str, password: str
+    ) -> Tuple[bool, Optional[ldap3.Connection]]:
+        """Attempt a simple bind with the credentials given by the user against
+        the LDAP server.
 
         Returns True, LDAP3Connection
             if the bind was successful
@@ -508,7 +530,9 @@ class LdapAuthProvider(object):
             logger.warning("Error during LDAP authentication: %s", e)
             raise
 
-    async def _ldap_authenticated_search(self, server, password, filters):
+    async def _ldap_authenticated_search(
+        self, server: str, password: str, filters: List[Tuple[str, str]]
+    ) -> Tuple[bool, Optional[ldap3.Connection], Any]:
         """Attempt to login with the preconfigured bind_dn and then continue
         searching and filtering within the base_dn.
 
@@ -516,10 +540,10 @@ class LdapAuthProvider(object):
         the config.
 
         Args:
-            server (str): The LDAP server to connect to.
-            password (str): The user's password.
-            filters (List[Tuple[str,str]]): A list of tuples of key/value
-                pairs to filter the LDAP search by.
+            server: The LDAP server to connect to.
+            password: The user's password.
+            filters: A list of tuples of key/value pairs to filter the LDAP
+                search by.
 
         Returns:
             Deferred[tuple[bool, LDAP3Connection, response]]: Returns a 3-tuple
@@ -530,6 +554,9 @@ class LdapAuthProvider(object):
         """
 
         try:
+            if self.ldap_bind_dn is None or self.ldap_bind_password is None:
+                raise ValueError("Missing bind DN or bind password")
+
             result, conn = await self._ldap_simple_bind(
                 server=server,
                 bind_dn=self.ldap_bind_dn,
@@ -538,6 +565,9 @@ class LdapAuthProvider(object):
 
             if not result:
                 return (False, None, None)
+
+            # conn is present because result is True
+            assert conn is not None
 
             # Construct search filter
             query = ""
@@ -605,24 +635,25 @@ class LdapAuthProvider(object):
             logger.warning("Error during LDAP authentication: %s", e)
             raise
 
-    async def _map_login_to_upn(self, username):
-        """Maps user provided login to Active Directory UPN and
-        local part of Matrix ID.
+    async def _map_login_to_upn(self, username: str) -> Tuple[str, str, str]:
+        """Maps user provided login to Active Directory UPN and local part
+        of Matrix ID.
 
         Args:
-            username (str): The user's login
+            username: The user's login
 
         Raises:
-            ActiveDirectoryUPNException: if username can not be
-                mapped to userPrincipalName
+            ActiveDirectoryUPNException: if username can not be mapped to
+            userPrincipalName
 
         Returns:
-            Tuple[str, str, str]: a tuple of Active Directory login,
-            Active Directory domain and local part of Matrix ID.
+            a tuple of:
+                - Active Directory login;
+                - Active Directory domain; and
+                - local part of Matrix ID.
         """
         login = username.lower()
         domain = self.ldap_default_domain
-        localpart = username
 
         if "\\" in username:
             (domain, login) = username.lower().rsplit("\\", 1)
@@ -631,14 +662,15 @@ class LdapAuthProvider(object):
                 domain += "." + ldap_root_domain
         elif "/" in username:
             (login, domain) = username.lower().rsplit("/", 1)
-        else:
-            if not self.ldap_default_domain:
-                logger.info(
-                    'No LDAP separator "/" was found in uid "%s" '
-                    "and LDAP default domain was not configured.",
-                    username,
-                )
-                raise ActiveDirectoryUPNException()
+        elif not self.ldap_default_domain:
+            logger.info(
+                'No LDAP separator "/" was found in uid "%s" '
+                "and LDAP default domain was not configured.",
+                username,
+            )
+            raise ActiveDirectoryUPNException()
+
+        assert domain is not None
 
         if self.ldap_default_domain and domain == self.ldap_default_domain.lower():
             localpart = login
@@ -648,7 +680,7 @@ class LdapAuthProvider(object):
         return (login, domain, localpart)
 
 
-def _require_keys(config, required):
+def _require_keys(config: Dict[str, Any], required: Iterable[str]) -> None:
     missing = [key for key in required if key not in config]
     if missing:
         raise Exception(

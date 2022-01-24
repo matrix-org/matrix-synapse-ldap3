@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+from unittest.mock import Mock
 
 from ldaptor import interfaces
 from ldaptor.protocols import pureldap
 from ldaptor.protocols.ldap import ldaperrors
 from ldaptor.protocols.ldap.ldapserver import LDAPServer
-from mock import Mock
 from twisted.internet import defer
 from twisted.internet.defer import ensureDeferred
 from twisted.trial import unittest
