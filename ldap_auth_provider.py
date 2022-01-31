@@ -49,6 +49,7 @@ class _LdapConfig:
     mode: Tuple[str]
     uri: Union[str, List[str]]
     start_tls: bool
+    validate_cert: bool
     base: str
     attributes: Dict[str, str]
     bind_dn: Optional[str] = None
@@ -63,13 +64,14 @@ SUPPORTED_LOGIN_FIELDS: Tuple[str, ...] = ("password",)
 
 
 class LdapAuthProvider:
-    _ldap_tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
-
     def __init__(self, config: _LdapConfig, account_handler: ModuleApi):
         self.account_handler: ModuleApi = account_handler
 
         self.ldap_mode = config.mode
         self.ldap_uris = [config.uri] if isinstance(config.uri, str) else config.uri
+        self.ldap_tls = ldap3.Tls(
+            validate=ssl.CERT_REQUIRED if config.validate_cert else ssl.CERT_NONE
+        )
         self.ldap_start_tls = config.start_tls
         self.ldap_base = config.base
         self.ldap_attributes = config.attributes
@@ -366,6 +368,7 @@ class LdapAuthProvider:
             mode=LDAPMode.SIMPLE,
             uri=config["uri"],
             start_tls=config.get("start_tls", False),
+            validate_cert=config.get("validate_cert", True),
             base=config["base"],
             attributes=config["attributes"],
         )
@@ -412,7 +415,7 @@ class LdapAuthProvider:
         """
         return ldap3.ServerPool(
             [
-                ldap3.Server(uri, get_info=get_info, tls=self._ldap_tls)
+                ldap3.Server(uri, get_info=get_info, tls=self.ldap_tls)
                 for uri in self.ldap_uris
             ],
         )
