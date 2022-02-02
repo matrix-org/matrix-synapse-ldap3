@@ -376,6 +376,7 @@ class LdapAuthProvider:
             mode=LDAPMode.SIMPLE,
             uri=config["uri"],
             start_tls=config.get("start_tls", False),
+            tls_options=config.get("tls_options"),
             validate_cert=config.get("validate_cert", True),
             base=config["base"],
             attributes=config["attributes"],
