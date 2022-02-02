@@ -74,7 +74,7 @@ class LdapAuthProvider:
             if config.validate_cert:
                 logger.warning("Config key validate_cert is not used when tls_options is specified")
             self.ldap_tls = ldap3.Tls(
-                **tls_options
+                **config.tls_options
             )
         else:
             self.ldap_tls = ldap3.Tls(
