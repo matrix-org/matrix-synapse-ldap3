@@ -72,10 +72,10 @@ class LdapAuthProvider:
         self.ldap_uris = [config.uri] if isinstance(config.uri, str) else config.uri
         if config.tls_options:
             if config.validate_cert:
-                logger.warning("Config key validate_cert is not used when tls_options is specified")
-            self.ldap_tls = ldap3.Tls(
-                **config.tls_options
-            )
+                logger.warning(
+                    "Config key validate_cert is not used when tls_options is specified"
+                )
+            self.ldap_tls = ldap3.Tls(**config.tls_options)
         else:
             self.ldap_tls = ldap3.Tls(
                 validate=ssl.CERT_REQUIRED if config.validate_cert else ssl.CERT_NONE
