@@ -50,6 +50,7 @@ class _LdapConfig:
     uri: Union[str, List[str]]
     start_tls: bool
     validate_cert: bool
+    tls_options: Dict[str, Any]
     base: str
     attributes: Dict[str, str]
     bind_dn: Optional[str] = None
@@ -69,9 +70,16 @@ class LdapAuthProvider:
 
         self.ldap_mode = config.mode
         self.ldap_uris = [config.uri] if isinstance(config.uri, str) else config.uri
-        self.ldap_tls = ldap3.Tls(
-            validate=ssl.CERT_REQUIRED if config.validate_cert else ssl.CERT_NONE
-        )
+        if config.tls_options:
+            if config.validate_cert:
+                logger.warning("Config key validate_cert is not used when tls_options is specified")
+            self.ldap_tls = ldap3.Tls(
+                **tls_options
+            )
+        else:
+            self.ldap_tls = ldap3.Tls(
+                validate=ssl.CERT_REQUIRED if config.validate_cert else ssl.CERT_NONE
+            )
         self.ldap_start_tls = config.start_tls
         self.ldap_base = config.base
         self.ldap_attributes = config.attributes
