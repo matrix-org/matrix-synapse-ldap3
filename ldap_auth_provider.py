@@ -71,10 +71,6 @@ class LdapAuthProvider:
         self.ldap_mode = config.mode
         self.ldap_uris = [config.uri] if isinstance(config.uri, str) else config.uri
         if config.tls_options:
-            if config.validate_cert:
-                logger.warning(
-                    "Config key validate_cert is not used when tls_options is specified"
-                )
             self.ldap_tls = ldap3.Tls(**config.tls_options)
         else:
             self.ldap_tls = ldap3.Tls(
@@ -409,6 +405,11 @@ class LdapAuthProvider:
         ldap_config.active_directory = config.get("active_directory", False)
         if ldap_config.active_directory:
             ldap_config.default_domain = config.get("default_domain", None)
+
+        if "validate_cert" in config and "tls_options" in config:
+            raise Exception(
+                "You cannot include both validate_cert and tls_options in the config"
+            )
 
         return ldap_config
 
