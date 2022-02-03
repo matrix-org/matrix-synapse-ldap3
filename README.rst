@@ -36,7 +36,12 @@ Example synapse config:
         #bind_dn:
         #bind_password:
         #filter: "(objectClass=posixAccount)"
-        #validate_cert: true
+        # Additional options for TLS, can be any key from https://ldap3.readthedocs.io/en/latest/ssltls.html#the-tls-object
+        #tls_options:
+        #  validate: true
+        #  local_certificate_file: foo.crt
+        #  local_private_key_file: bar.pem
+        #  local_private_key_password: secret
 
 If you would like to specify more than one LDAP server for HA, you can provide uri parameter with a list.
 Default HA strategy of ldap3.ServerPool is employed, so first available server is used.
@@ -59,7 +64,11 @@ Default HA strategy of ldap3.ServerPool is employed, so first available server i
         #bind_dn:
         #bind_password:
         #filter: "(objectClass=posixAccount)"
-        #validate_cert: true
+        #tls_options:
+        #  validate: true
+        #  local_certificate_file: foo.crt
+        #  local_private_key_file: bar.pem
+        #  local_private_key_password: secret
 
 If you would like to enable login/registration via email, or givenName/email
 binding upon registration, you need to enable search mode. An example config
@@ -83,7 +92,11 @@ in search mode is provided below:
         bind_dn: "cn=hacker,ou=svcaccts,dc=example,dc=com"
         bind_password: "ch33kym0nk3y"
         #filter: "(objectClass=posixAccount)"
-        #validate_cert: true
+        #tls_options:
+        #  validate: true
+        #  local_certificate_file: foo.crt
+        #  local_private_key_file: bar.pem
+        #  local_private_key_password: secret
 
 Active Directory forest support
 -------------------------------
