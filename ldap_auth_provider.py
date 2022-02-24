@@ -700,7 +700,7 @@ class LdapAuthProviderModule(LdapAuthProvider):
     def __init__(self, config, api: "ModuleApi"):
         # The Module API is API-compatible in such a way that it's a drop-in
         # replacement for the account handler, where this module is concerned.
-        super(LdapAuthProviderModule, self).__init__(config, account_handler=api)
+        super().__init__(config, account_handler=api)
 
         # Register callbacks, since the generic module API requires us to
         # explicitly tell it what callbacks we want.
