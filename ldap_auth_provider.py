@@ -23,6 +23,7 @@ import ldap3.core.exceptions
 import synapse
 from pkg_resources import parse_version
 from synapse.module_api import ModuleApi
+from synapse.types import JsonDict
 from twisted.internet import threads
 
 __version__ = "0.1.5"
@@ -688,6 +689,51 @@ class LdapAuthProvider:
             localpart = login + "/" + domain
 
         return (login, domain, localpart)
+
+
+class LdapAuthProviderModule(LdapAuthProvider):
+    """
+    Wrapper for the LDAP Authentication Provider that supports the new generic module interface,
+    rather than the Password Authentication Provider module interface.
+    """
+
+    def __init__(self, config, api: "ModuleApi"):
+        # The Module API is API-compatible in such a way that it's a drop-in
+        # replacement for the account handler, where this module is concerned.
+        super().__init__(config, account_handler=api)
+
+        # Register callbacks, since the generic module API requires us to
+        # explicitly tell it what callbacks we want.
+        api.register_password_auth_provider_callbacks(
+            auth_checkers={
+                (SUPPORTED_LOGIN_TYPE, SUPPORTED_LOGIN_FIELDS): self.wrapped_check_auth
+            },
+            check_3pid_auth=self.wrapped_check_3pid_auth,
+        )
+
+    async def wrapped_check_auth(
+        self, username: str, login_type: str, login_dict: JsonDict
+    ) -> Optional[Tuple[str, None]]:
+        """
+        Wrapper between the old-style `check_auth` interface and the new one.
+        """
+        result = await self.check_auth(username, login_type, login_dict)
+        if result is None:
+            return None
+        else:
+            return result, None
+
+    async def wrapped_check_3pid_auth(
+        self, medium: str, address: str, password: str
+    ) -> Optional[Tuple[str, None]]:
+        """
+        Wrapper between the old-style `check_3pid_auth` interface and the new one.
+        """
+        result = await self.check_3pid_auth(medium, address, password)
+        if result is None:
+            return None
+        else:
+            return result, None
 
 
 def _require_keys(config: Dict[str, Any], required: Iterable[str]) -> None:
