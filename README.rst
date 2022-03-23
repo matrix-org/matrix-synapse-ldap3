@@ -9,7 +9,7 @@ that offers more fully-featured integration.
 
 Installation
 ------------
-- Included as standard in the deb packages and docker images from matrix.org.
+- Included as standard in the [deb packages](https://matrix-org.github.io/synapse/latest/setup/installation.html#matrixorg-packages) and [docker images](https://matrix-org.github.io/synapse/latest/setup/installation.html#docker-images-and-ansible-playbooks) from matrix.org.
 - If you installed into a virtualenv:
     - Ensure pip is up-to-date: `pip install -U pip`.
     - Install the LDAP password provider: `pip install matrix-synapse-ldap3`.
