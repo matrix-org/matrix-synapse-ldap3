@@ -183,7 +183,7 @@ class LdapAuthProvider:
                 return None
 
             # normalize localpart for use with synapse
-            normalized_localpart = synapse.types.map_username_to_mxid_localpart(localpart)
+            normalized_localpart = map_username_to_mxid_localpart(localpart)
 
             # Get full user id from localpart
             user_id = self.account_handler.get_qualified_user_id(normalized_localpart)
