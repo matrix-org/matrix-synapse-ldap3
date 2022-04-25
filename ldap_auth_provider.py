@@ -23,7 +23,7 @@ import ldap3.core.exceptions
 import synapse
 from pkg_resources import parse_version
 from synapse.module_api import ModuleApi
-from synapse.types import JsonDict
+from synapse.types import JsonDict, map_username_to_mxid_localpart
 from twisted.internet import threads
 
 __version__ = "0.2.0"
@@ -181,6 +181,9 @@ class LdapAuthProvider:
                     "Authentication method yielded no LDAP connection, aborting!"
                 )
                 return None
+
+            # normalize localpart for use with synapse
+            localpart = synapse.types.map_username_to_mxid_localpart(localpart)
 
             # Get full user id from localpart
             user_id = self.account_handler.get_qualified_user_id(localpart)
