@@ -23,7 +23,7 @@ import ldap3.core.exceptions
 import synapse
 from pkg_resources import parse_version
 from synapse.module_api import ModuleApi
-from synapse.types import JsonDict, map_username_to_mxid_localpart
+from synapse.types import JsonDict
 from twisted.internet import threads
 
 __version__ = "0.2.0"
@@ -182,11 +182,8 @@ class LdapAuthProvider:
                 )
                 return None
 
-            # normalize localpart for use with synapse
-            normalized_localpart = map_username_to_mxid_localpart(localpart)
-
             # Get full user id from localpart
-            user_id = self.account_handler.get_qualified_user_id(normalized_localpart)
+            user_id = self.account_handler.get_qualified_user_id(localpart.lower())
 
             # check if user with user_id exists
             if await self.account_handler.check_user_exists(user_id):
@@ -226,7 +223,7 @@ class LdapAuthProvider:
                     mail = None
 
                 # Register the user
-                user_id = await self.register_user(normalized_localpart, display_name, mail)
+                user_id = await self.register_user(localpart.lower(), display_name, mail)
 
                 return user_id
 
