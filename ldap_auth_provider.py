@@ -223,7 +223,9 @@ class LdapAuthProvider:
                     mail = None
 
                 # Register the user
-                user_id = await self.register_user(localpart.lower(), display_name, mail)
+                user_id = await self.register_user(
+                    localpart.lower(), display_name, mail
+                )
 
                 return user_id
 
