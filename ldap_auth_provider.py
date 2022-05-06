@@ -133,6 +133,8 @@ class LdapAuthProvider:
             except ActiveDirectoryUPNException:
                 return None
 
+        localpart = localpart.lower()
+
         try:
             server = self._get_server()
             logger.debug("Attempting LDAP connection with %s", self.ldap_uris)
