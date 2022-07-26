@@ -186,12 +186,12 @@ class LdapAuthProvider:
             user_id = self.account_handler.get_qualified_user_id(localpart)
 
             # check if user with user_id exists
-            cannonical_user_id = await self.account_handler.check_user_exists(user_id)
-            if cannonical_user_id:
+            canonical_user_id = await self.account_handler.check_user_exists(user_id)
+            if canonical_user_id:
                 # exists, authentication complete
                 if hasattr(conn, "unbind"):
                     await threads.deferToThread(conn.unbind)
-                return cannonical_user_id
+                return canonical_user_id
 
             else:
                 # does not exist, register
