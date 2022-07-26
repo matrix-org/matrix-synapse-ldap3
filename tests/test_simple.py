@@ -40,7 +40,7 @@ class LdapSimpleTestCase(unittest.TestCase):
                 "register_password_auth_provider_callbacks",
             ]
         )
-        module_api.check_user_exists.return_value = make_awaitable(True)
+        module_api.check_user_exists.return_value = make_awaitable("@bob:test")
         module_api.get_qualified_user_id = get_qualified_user_id
 
         self.auth_provider = create_auth_provider(
@@ -95,15 +95,6 @@ class LdapSimpleTestCase(unittest.TestCase):
         )
         self.assertFalse(result)
 
-    @defer.inlineCallbacks
-    def test_uppercase_username(self):
-        result = yield defer.ensureDeferred(
-            self.auth_provider.check_auth(
-                "BOB", "m.login.password", {"password": "secret"}
-            )
-        )
-        self.assertEqual(result, "@bob:test")
-
 
 class LdapSearchTestCase(unittest.TestCase):
     @defer.inlineCallbacks
@@ -116,7 +107,7 @@ class LdapSearchTestCase(unittest.TestCase):
                 "register_password_auth_provider_callbacks",
             ]
         )
-        module_api.check_user_exists.return_value = make_awaitable(True)
+        module_api.check_user_exists.return_value = make_awaitable("@bob:test")
         module_api.get_qualified_user_id = get_qualified_user_id
 
         self.auth_provider = create_auth_provider(
