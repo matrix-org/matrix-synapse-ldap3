@@ -133,8 +133,6 @@ class LdapAuthProvider:
             except ActiveDirectoryUPNException:
                 return None
 
-        localpart = localpart.lower()
-
         try:
             server = self._get_server()
             logger.debug("Attempting LDAP connection with %s", self.ldap_uris)
@@ -188,11 +186,12 @@ class LdapAuthProvider:
             user_id = self.account_handler.get_qualified_user_id(localpart)
 
             # check if user with user_id exists
-            if await self.account_handler.check_user_exists(user_id):
+            cannonical_user_id = await self.account_handler.check_user_exists(user_id)
+            if cannonical_user_id:
                 # exists, authentication complete
                 if hasattr(conn, "unbind"):
                     await threads.deferToThread(conn.unbind)
-                return user_id
+                return cannonical_user_id
 
             else:
                 # does not exist, register
@@ -225,7 +224,9 @@ class LdapAuthProvider:
                     mail = None
 
                 # Register the user
-                user_id = await self.register_user(localpart, display_name, mail)
+                user_id = await self.register_user(
+                    localpart.lower(), display_name, mail
+                )
 
                 return user_id
 
