@@ -62,18 +62,10 @@ class _ActiveDirectoryLDAPServer(LDAPServer):
 
 class AbstractLdapActiveDirectoryTestCase:
     @defer.inlineCallbacks
-    def make_ldap_server(self, api):
+    def setUp(self):
         self.ldap_server = yield ensureDeferred(
             create_ldap_server(_ActiveDirectoryLDAPServer)
         )
-
-        self.auth_provider = create_auth_provider(
-            self.ldap_server,
-            api,
-            config=self.getConfig(),
-        )
-
-    def make_mock(self, side_effects):
         module_api = Mock(
             spec_set=[
                 "check_user_exists",
@@ -81,9 +73,16 @@ class AbstractLdapActiveDirectoryTestCase:
                 "register_password_auth_provider_callbacks",
             ]
         )
-        module_api.check_user_exists.side_effect = side_effects
+        module_api.check_user_exists.side_effect = lambda user_id: make_awaitable(
+            user_id
+        )
         module_api.get_qualified_user_id = get_qualified_user_id
-        return module_api
+
+        self.auth_provider = create_auth_provider(
+            self.ldap_server,
+            module_api,
+            config=self.getConfig(),
+        )
 
     def getConfig(self):
         return self.getDefaultConfig()
@@ -112,18 +111,6 @@ class LdapActiveDirectoryTestCase(
 ):
     @defer.inlineCallbacks
     def test_correct_pwd(self):
-        return_values = [
-            make_awaitable("@mainuser/main.example.org:test"),
-            make_awaitable("@mainuser/main.example.org:test"),
-            make_awaitable("@nonmainuser/subsidiary.example.org:test"),
-            make_awaitable("@nonmainuser/subsidiary.example.org:test"),
-            make_awaitable("@mainuser/subsidiary.example.org:test"),
-            make_awaitable("@mainuser/subsidiary.example.org:test"),
-            make_awaitable("@uniqueuser/main.example.org:test"),
-        ]
-        mock_api = self.make_mock(return_values)
-        self.make_ldap_server(mock_api)
-
         result = yield ensureDeferred(
             self.auth_provider.check_auth(
                 "main.example.org\\mainuser",
@@ -176,9 +163,6 @@ class LdapActiveDirectoryTestCase(
 
     @defer.inlineCallbacks
     def test_single_email(self):
-        return_values = [make_awaitable(True)]
-        mock_api = self.make_mock(return_values)
-        self.make_ldap_server(mock_api)
         result = yield ensureDeferred(
             self.auth_provider.check_3pid_auth(
                 "email",
@@ -190,9 +174,6 @@ class LdapActiveDirectoryTestCase(
 
     @defer.inlineCallbacks
     def test_incorrect_pwd(self):
-        return_values = [make_awaitable(True)]
-        mock_api = self.make_mock(return_values)
-        self.make_ldap_server(mock_api)
         result = yield ensureDeferred(
             self.auth_provider.check_auth(
                 "main.example.org\\mainuser",
@@ -213,9 +194,6 @@ class LdapActiveDirectoryTestCase(
 
     @defer.inlineCallbacks
     def test_email_login(self):
-        return_values = [make_awaitable(True)]
-        mock_api = self.make_mock(return_values)
-        self.make_ldap_server(mock_api)
         result = yield ensureDeferred(
             self.auth_provider.check_3pid_auth(
                 "email",
@@ -234,14 +212,6 @@ class LdapActiveDirectoryDefaultDomainTestCase(
 
     @defer.inlineCallbacks
     def test_correct_pwd(self):
-        return_values = [
-            make_awaitable("@mainuser:test"),
-            make_awaitable("@mainuser:test"),
-            make_awaitable("@nonmainuser/subsidiary.example.org:test"),
-            make_awaitable("@mainuser/subsidiary.example.org:test"),
-        ]
-        mock_api = self.make_mock(return_values)
-        self.make_ldap_server(mock_api)
         result = yield ensureDeferred(
             self.auth_provider.check_auth(
                 "mainuser", "m.login.password", {"password": "abracadabra"}
@@ -278,12 +248,6 @@ class LdapActiveDirectoryDefaultDomainTestCase(
 
     @defer.inlineCallbacks
     def test_incorrect_pwd(self):
-        return_values = [
-            make_awaitable(True),
-            make_awaitable(True),
-        ]
-        mock_api = self.make_mock(return_values)
-        self.make_ldap_server(mock_api)
         result = yield ensureDeferred(
             self.auth_provider.check_auth(
                 "mainuser", "m.login.password", {"password": "changeit"}
@@ -302,12 +266,6 @@ class LdapActiveDirectoryDefaultDomainTestCase(
 
     @defer.inlineCallbacks
     def test_email_login(self):
-        return_values = [
-            make_awaitable(True),
-            make_awaitable(True),
-        ]
-        mock_api = self.make_mock(return_values)
-        self.make_ldap_server(mock_api)
         result = yield ensureDeferred(
             self.auth_provider.check_3pid_auth(
                 "email",
