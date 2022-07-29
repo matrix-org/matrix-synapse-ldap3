@@ -73,7 +73,9 @@ class AbstractLdapActiveDirectoryTestCase:
                 "register_password_auth_provider_callbacks",
             ]
         )
-        module_api.check_user_exists.return_value = make_awaitable(True)
+        module_api.check_user_exists.side_effect = lambda user_id: make_awaitable(
+            user_id
+        )
         module_api.get_qualified_user_id = get_qualified_user_id
 
         self.auth_provider = create_auth_provider(
