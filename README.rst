@@ -98,6 +98,20 @@ in search mode is provided below:
         #  local_private_key_file: bar.pem
         #  local_private_key_password: secret
 
+Alternatively you can also put the ``bind_password`` of your service user into its
+own file to not leak secrets into your configuration:
+
+.. code:: yaml
+
+   modules:
+    - module: "ldap_auth_provider.LdapAuthProviderModule"
+      config:
+        enabled: true
+        # all the other options you need
+        bind_password_file: "/var/secrets/synapse-ldap-bind-password"
+
+Please note that every trailing ``\n`` in the password file will be stripped automatically.
+
 Active Directory forest support
 -------------------------------
 

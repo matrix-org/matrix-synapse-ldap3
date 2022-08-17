@@ -388,12 +388,19 @@ class LdapAuthProvider:
                 config,
                 [
                     "bind_dn",
-                    "bind_password",
                 ],
             )
 
             ldap_config.bind_dn = config["bind_dn"]
-            ldap_config.bind_password = config["bind_password"]
+            if "bind_password" in config:
+                ldap_config.bind_password = config["bind_password"]
+            elif "bind_password_file" in config:
+                with open(config["bind_password_file"], "r") as f:
+                    ldap_config.bind_password = f.read().rstrip("\n")
+            else:
+                raise ValueError(
+                    "Either bind_password or bind_password_file must be set!"
+                )
             ldap_config.filter = config.get("filter", None)
 
         # verify attribute lookup
