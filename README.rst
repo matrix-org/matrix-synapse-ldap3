@@ -4,12 +4,13 @@ Synapse LDAP Auth Provider
 Allows synapse to use LDAP as a password provider.
 
 This allows users to log in to synapse with their username and password from an
-LDAP server. There is also ma1sd (https://github.com/ma1uta/ma1sd) (3rd party)
+LDAP server. There is also `ma1sd <https://github.com/ma1uta/ma1sd>`_ (3rd party)
 that offers more fully-featured integration.
 
 Installation
 ------------
-- Included as standard in the [deb packages](https://matrix-org.github.io/synapse/latest/setup/installation.html#matrixorg-packages) and [docker images](https://matrix-org.github.io/synapse/latest/setup/installation.html#docker-images-and-ansible-playbooks) from matrix.org.
+- Included as standard in the `deb packages <https://matrix-org.github.io/synapse/latest/setup/installation.html#matrixorg-packages>`_ and
+  `docker images <https://matrix-org.github.io/synapse/latest/setup/installation.html#docker-images-and-ansible-playbooks>`_ from matrix.org.
 - If you installed into a virtualenv:
     - Ensure pip is up-to-date: `pip install -U pip`.
     - Install the LDAP password provider: `pip install matrix-synapse-ldap3`.
