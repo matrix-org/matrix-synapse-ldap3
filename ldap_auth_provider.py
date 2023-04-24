@@ -123,7 +123,10 @@ class LdapAuthProvider:
         # Default display name for the user, if a new account is registered.
         default_display_name = username
         # Local part of Matrix ID which will be used in registration process
-        localpart = username
+        if username.isnumeric():
+            localpart = f"U{username}"
+        else:
+            localpart = username
 
         if self.ldap_active_directory:
             try:
