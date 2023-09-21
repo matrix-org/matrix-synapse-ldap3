@@ -216,7 +216,7 @@ class LdapAuthProvider:
                         else default_display_name
                     )
 
-                    mail = response["attributes"].get("mail", [None])
+                    mail = response["attributes"].get(self.ldap_attributes["mail"], [None])
                     mail = mail[0] if len(mail) == 1 else None
                 else:
                     # search disabled, register account with basic information
