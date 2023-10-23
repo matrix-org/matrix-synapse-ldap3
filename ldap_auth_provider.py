@@ -26,7 +26,7 @@ from synapse.module_api import ModuleApi
 from synapse.types import JsonDict
 from twisted.internet import threads
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 
 logger = logging.getLogger(__name__)
 
