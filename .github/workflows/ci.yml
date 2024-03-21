@@ -34,7 +34,7 @@ jobs:
       matrix:
         # Run the unit tests both against our oldest supported Python version
         # and the newest stable.
-        python_version: [ "3.7", "3.x" ]
+        python_version: [ "3.8", "3.x" ]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
