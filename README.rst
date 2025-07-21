@@ -43,6 +43,8 @@ Example Synapse configuration:
         #  local_certificate_file: foo.crt
         #  local_private_key_file: bar.pem
         #  local_private_key_password: secret
+        #user_mapping:
+        #   localpart_template: "u{localpart}"  # 12345 → u12345
 
 If you would like to specify more than one LDAP server for HA, you can provide uri parameter with a list.
 Default HA strategy of ldap3.ServerPool is employed, so first available server is used.
