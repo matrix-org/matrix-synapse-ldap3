@@ -126,6 +126,52 @@ class LdapAuthProvider:
                           localpart_template, localpart, e)
             return localpart
 
+    def _reverse_user_mapping(self, mapped_localpart: str) -> str:
+        """Reverse user mapping to get original localpart for LDAP queries.
+
+        Args:
+            mapped_localpart: Mapped localpart (e.g., 'u790159')
+
+        Returns:
+            Original localpart for LDAP queries (e.g., '790159')
+        """
+        if not self.user_mapping:
+            return mapped_localpart
+
+        localpart_template = self.user_mapping.get("localpart_template")
+        if not localpart_template:
+            return mapped_localpart
+
+        try:
+            import re
+
+            # Convert template to regex pattern
+            # Replace {localpart} with a capturing group
+            # Escape other regex special characters in the template
+            escaped_template = re.escape(localpart_template)
+            # Replace the escaped {localpart} with a capturing group
+            pattern = escaped_template.replace(r'\{localpart\}', r'(.+)')
+            pattern = f'^{pattern}$'
+
+            logger.debug("Using regex pattern '%s' to reverse map '%s'", pattern, mapped_localpart)
+
+            match = re.match(pattern, mapped_localpart)
+            if match:
+                original = match.group(1)
+                logger.debug("Reverse mapped localpart '%s' to '%s' using template '%s'",
+                            mapped_localpart, original, localpart_template)
+                return original
+            else:
+                # If pattern doesn't match, maybe it's already the original
+                logger.debug("Pattern '%s' doesn't match '%s', assuming it's already original",
+                            pattern, mapped_localpart)
+                return mapped_localpart
+
+        except Exception as e:
+            logger.warning("Failed to reverse user mapping for localpart '%s': %s",
+                          mapped_localpart, e)
+            return mapped_localpart
+
     async def check_auth(
         self, username: str, login_type: str, login_dict: Dict[str, Any]
     ) -> Optional[str]:
@@ -149,12 +195,15 @@ class LdapAuthProvider:
             # username is of the form @foo:bar.com
             username = username.split(":", 1)[0][1:]
 
+        # If username is already mapped (from previous login), reverse it for LDAP queries
+        original_username = self._reverse_user_mapping(username)
+
         # Used in LDAP queries as value of ldap_attributes['uid'] attribute.
-        uid_value = username
+        uid_value = original_username
         # Default display name for the user, if a new account is registered.
-        default_display_name = username
+        default_display_name = original_username
         # Local part of Matrix ID which will be used in registration process
-        localpart = username
+        localpart = original_username
 
         if self.ldap_active_directory:
             try:
