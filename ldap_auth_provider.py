@@ -59,6 +59,7 @@ class _LdapConfig:
     filter: Optional[str] = None
     active_directory: Optional[str] = None
     default_domain: Optional[str] = None
+    user_mapping: Optional[Dict[str, str]] = None
 
 
 SUPPORTED_LOGIN_TYPE: str = "m.login.password"
@@ -92,8 +93,38 @@ class LdapAuthProvider:
             # of error; or None if there was no attempt to fetch root domain yet
             self.ldap_root_domain = None  # type: Optional[str]
 
+        # User mapping configuration
+        self.user_mapping = config.user_mapping
+
     def get_supported_login_types(self) -> Dict[str, Tuple[str, ...]]:
         return {SUPPORTED_LOGIN_TYPE: SUPPORTED_LOGIN_FIELDS}
+
+    def _apply_user_mapping(self, localpart: str) -> str:
+        """Apply user mapping configuration to transform localpart.
+
+        Args:
+            localpart: Original localpart from LDAP authentication
+
+        Returns:
+            Transformed localpart according to user_mapping configuration
+        """
+        if not self.user_mapping:
+            return localpart
+
+        localpart_template = self.user_mapping.get("localpart_template")
+        if not localpart_template:
+            return localpart
+
+        try:
+            # Apply template transformation
+            mapped_localpart = localpart_template.format(localpart=localpart)
+            logger.debug("Mapped localpart '%s' to '%s' using template '%s'",
+                        localpart, mapped_localpart, localpart_template)
+            return mapped_localpart
+        except (KeyError, ValueError) as e:
+            logger.warning("Failed to apply user mapping template '%s' to localpart '%s': %s",
+                          localpart_template, localpart, e)
+            return localpart
 
     async def check_auth(
         self, username: str, login_type: str, login_dict: Dict[str, Any]
@@ -182,10 +213,13 @@ class LdapAuthProvider:
                 )
                 return None
 
-            # Get full user id from localpart
-            user_id = self.account_handler.get_qualified_user_id(localpart)
+            # Apply user mapping to localpart before checking existence
+            mapped_localpart = self._apply_user_mapping(localpart)
 
-            # check if user with user_id exists
+            # Get full user id from mapped localpart
+            user_id = self.account_handler.get_qualified_user_id(mapped_localpart)
+
+            # check if user with mapped user_id exists
             canonical_user_id = await self.account_handler.check_user_exists(user_id)
             if canonical_user_id:
                 # exists, authentication complete
@@ -225,9 +259,9 @@ class LdapAuthProvider:
                     display_name = default_display_name
                     mail = None
 
-                # Register the user
+                # Register the user with mapped localpart
                 user_id = await self.register_user(
-                    localpart.lower(), display_name, mail
+                    mapped_localpart.lower(), display_name, mail, already_mapped=True
                 )
 
                 return user_id
@@ -317,19 +351,26 @@ class LdapAuthProvider:
             logger.warning("Error during ldap authentication: %s", e)
             raise
 
-    async def register_user(self, localpart: str, name: str, email_address: str) -> str:
+    async def register_user(self, localpart: str, name: str, email_address: str, already_mapped: bool = False) -> str:
         """Register a Synapse user, first checking if they exist.
 
         Args:
             localpart: Localpart of the user to register on this homeserver.
             name: Full name of the user.
             email_address: Email address of the user.
+            already_mapped: If True, localpart is already mapped and won't be mapped again.
 
         Returns:
             user_id: User ID of the newly registered user.
         """
-        # Get full user id from localpart
-        user_id = self.account_handler.get_qualified_user_id(localpart)
+        # Apply user mapping to localpart before registration (unless already mapped)
+        if already_mapped:
+            mapped_localpart = localpart
+        else:
+            mapped_localpart = self._apply_user_mapping(localpart)
+
+        # Get full user id from mapped localpart
+        user_id = self.account_handler.get_qualified_user_id(mapped_localpart)
 
         if await self.account_handler.check_user_exists(user_id):
             # exists, authentication complete
@@ -343,13 +384,13 @@ class LdapAuthProvider:
         # from password providers
         if parse_version(synapse.__version__) <= parse_version("0.99.3"):
             user_id, access_token = await self.account_handler.register(
-                localpart=localpart,
+                localpart=mapped_localpart,
                 displayname=name,
             )
         else:
             # If Synapse has support, bind emails
             user_id, access_token = await self.account_handler.register(
-                localpart=localpart,
+                localpart=mapped_localpart,
                 displayname=name,
                 emails=emails,
             )
@@ -422,6 +463,22 @@ class LdapAuthProvider:
         ldap_config.active_directory = config.get("active_directory", False)
         if ldap_config.active_directory:
             ldap_config.default_domain = config.get("default_domain", None)
+
+        # Parse user_mapping configuration
+        user_mapping = config.get("user_mapping")
+        if user_mapping:
+            if not isinstance(user_mapping, dict):
+                raise ValueError("user_mapping must be a dictionary")
+
+            localpart_template = user_mapping.get("localpart_template")
+            if localpart_template and not isinstance(localpart_template, str):
+                raise ValueError("localpart_template must be a string")
+
+            # Validate template contains {localpart} placeholder
+            if localpart_template and "{localpart}" not in localpart_template:
+                raise ValueError("localpart_template must contain {localpart} placeholder")
+
+            ldap_config.user_mapping = user_mapping
 
         if "validate_cert" in config and "tls_options" in config:
             raise Exception(
