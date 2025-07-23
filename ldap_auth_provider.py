@@ -126,8 +126,10 @@ class LdapAuthProvider:
                           localpart_template, localpart, e)
             return localpart
 
-    def _reverse_user_mapping(self, mapped_localpart: str) -> str:
+    async def _reverse_user_mapping(self, mapped_localpart: str) -> str:
         """Reverse user mapping to get original localpart for LDAP queries.
+
+        Uses user_external_ids table to find the original LDAP localpart.
 
         Args:
             mapped_localpart: Mapped localpart (e.g., 'u790159')
@@ -138,39 +140,21 @@ class LdapAuthProvider:
         if not self.user_mapping:
             return mapped_localpart
 
-        localpart_template = self.user_mapping.get("localpart_template")
-        if not localpart_template:
-            return mapped_localpart
-
+        # Get original localpart from database
         try:
-            import re
-
-            # Convert template to regex pattern
-            # Replace {localpart} with a capturing group
-            # Escape other regex special characters in the template
-            escaped_template = re.escape(localpart_template)
-            # Replace the escaped {localpart} with a capturing group
-            pattern = escaped_template.replace(r'\{localpart\}', r'(.+)')
-            pattern = f'^{pattern}$'
-
-            logger.debug("Using regex pattern '%s' to reverse map '%s'", pattern, mapped_localpart)
-
-            match = re.match(pattern, mapped_localpart)
-            if match:
-                original = match.group(1)
-                logger.debug("Reverse mapped localpart '%s' to '%s' using template '%s'",
-                            mapped_localpart, original, localpart_template)
-                return original
-            else:
-                # If pattern doesn't match, maybe it's already the original
-                logger.debug("Pattern '%s' doesn't match '%s', assuming it's already original",
-                            pattern, mapped_localpart)
-                return mapped_localpart
-
+            original_from_db = await self._get_original_localpart(mapped_localpart)
+            if original_from_db:
+                logger.debug("Found original localpart '%s' in database for '%s'",
+                            original_from_db, mapped_localpart)
+                return original_from_db
         except Exception as e:
-            logger.warning("Failed to reverse user mapping for localpart '%s': %s",
+            logger.warning("Failed to get original localpart from database for '%s': %s",
                           mapped_localpart, e)
-            return mapped_localpart
+
+        # If not found in database, assume it's already the original
+        logger.debug("No original localpart found for '%s', assuming it's already original",
+                    mapped_localpart)
+        return mapped_localpart
 
     async def check_auth(
         self, username: str, login_type: str, login_dict: Dict[str, Any]
@@ -196,7 +180,7 @@ class LdapAuthProvider:
             username = username.split(":", 1)[0][1:]
 
         # If username is already mapped (from previous login), reverse it for LDAP queries
-        original_username = self._reverse_user_mapping(username)
+        original_username = await self._reverse_user_mapping(username)
 
         # Used in LDAP queries as value of ldap_attributes['uid'] attribute.
         uid_value = original_username
@@ -265,10 +249,19 @@ class LdapAuthProvider:
             # Apply user mapping to localpart before checking existence
             mapped_localpart = self._apply_user_mapping(localpart)
 
+            # First try to find existing user by original LDAP localpart
+            existing_user_id = await self._find_user_by_original_localpart(localpart)
+
+            if existing_user_id:
+                # User exists with this original LDAP ID, return existing user
+                logger.debug("Found existing user '%s' for original localpart '%s'",
+                            existing_user_id, localpart)
+                return existing_user_id
+
             # Get full user id from mapped localpart
             user_id = self.account_handler.get_qualified_user_id(mapped_localpart)
 
-            # check if user with mapped user_id exists
+            # check if user with mapped user_id exists (fallback for users without stored original ID)
             canonical_user_id = await self.account_handler.check_user_exists(user_id)
             if canonical_user_id:
                 # exists, authentication complete
@@ -310,7 +303,8 @@ class LdapAuthProvider:
 
                 # Register the user with mapped localpart
                 user_id = await self.register_user(
-                    mapped_localpart.lower(), display_name, mail, already_mapped=True
+                    mapped_localpart.lower(), display_name, mail,
+                    already_mapped=True, original_localpart=localpart.lower()
                 )
 
                 return user_id
@@ -400,7 +394,7 @@ class LdapAuthProvider:
             logger.warning("Error during ldap authentication: %s", e)
             raise
 
-    async def register_user(self, localpart: str, name: str, email_address: str, already_mapped: bool = False) -> str:
+    async def register_user(self, localpart: str, name: str, email_address: str, already_mapped: bool = False, original_localpart: str = None) -> str:
         """Register a Synapse user, first checking if they exist.
 
         Args:
@@ -408,6 +402,7 @@ class LdapAuthProvider:
             name: Full name of the user.
             email_address: Email address of the user.
             already_mapped: If True, localpart is already mapped and won't be mapped again.
+            original_localpart: Original LDAP localpart (for storing in user_external_ids).
 
         Returns:
             user_id: User ID of the newly registered user.
@@ -415,7 +410,11 @@ class LdapAuthProvider:
         # Apply user mapping to localpart before registration (unless already mapped)
         if already_mapped:
             mapped_localpart = localpart
+            # If original_localpart not provided, we can't store it
+            if original_localpart is None:
+                original_localpart = localpart  # This might not be correct, but it's our best guess
         else:
+            original_localpart = localpart
             mapped_localpart = self._apply_user_mapping(localpart)
 
         # Get full user id from mapped localpart
@@ -444,12 +443,153 @@ class LdapAuthProvider:
                 emails=emails,
             )
 
+        # Store original LDAP localpart in user_external_ids for future reference
+        # Only store if we applied mapping (original localpart != mapped localpart)
+        if original_localpart and original_localpart != mapped_localpart:
+            await self._store_original_localpart(user_id, original_localpart)
+
         logger.info(
             "Registration based on LDAP data was successful: %s",
             user_id,
         )
 
         return user_id
+
+    async def _store_original_localpart(self, user_id: str, original_localpart: str) -> None:
+        """Store original LDAP localpart in user_external_ids table.
+
+        Args:
+            user_id: Full Matrix user ID (e.g., '@u790159:domain.com')
+            original_localpart: Original LDAP localpart (e.g., '790159')
+        """
+        try:
+            # Use a consistent auth_provider_id for LDAP original localparts
+            auth_provider_id = "ldap_original"
+
+            # First check if user already has an external ID for this auth provider
+            # Try to access internal store directly
+            existing_ldap_original = None
+
+            if hasattr(self.account_handler, '_store'):
+                try:
+                    store = self.account_handler._store
+                    # Use the exact method name from Synapse store
+                    existing_external_ids = await store.get_external_ids_by_user(user_id)
+
+                    for auth_provider, external_id in existing_external_ids:
+                        if auth_provider == auth_provider_id:
+                            existing_ldap_original = external_id
+                            break
+                except Exception as e:
+                    logger.debug("Could not check existing external IDs via store: %s", e)
+
+            if existing_ldap_original:
+                if existing_ldap_original == original_localpart:
+                    logger.debug("Original localpart '%s' already stored for user '%s'",
+                                original_localpart, user_id)
+                    return
+                else:
+                    logger.info("User '%s' already has different original localpart '%s', not updating to '%s'",
+                               user_id, existing_ldap_original, original_localpart)
+                    return
+
+            # Store the mapping in user_external_ids table
+            await self.account_handler.record_user_external_id(
+                auth_provider_id, original_localpart, user_id
+            )
+
+            logger.debug("Stored original localpart '%s' for user '%s'",
+                        original_localpart, user_id)
+        except Exception as e:
+            logger.warning("Failed to store original localpart '%s' for user '%s': %s",
+                          original_localpart, user_id, e)
+
+    async def _get_original_localpart(self, mapped_localpart: str) -> Optional[str]:
+        """Retrieve original LDAP localpart from user_external_ids table.
+
+        Args:
+            mapped_localpart: Mapped localpart (e.g., 'u790159')
+
+        Returns:
+            Original LDAP localpart if found, None otherwise
+        """
+        try:
+            # Construct the full user_id from mapped localpart
+            user_id = self.account_handler.get_qualified_user_id(mapped_localpart)
+
+            # Check if user exists
+            if not await self.account_handler.check_user_exists(user_id):
+                return None
+
+            # Get external IDs for this user via internal store
+            auth_provider_id = "ldap_original"
+
+            if hasattr(self.account_handler, '_store'):
+                try:
+                    store = self.account_handler._store
+                    external_ids = await store.get_external_ids_by_user(user_id)
+
+                    # Look for our stored original localpart
+                    for auth_provider, external_id in external_ids:
+                        if auth_provider == auth_provider_id:
+                            logger.debug("Found original localpart '%s' for mapped localpart '%s'",
+                                        external_id, mapped_localpart)
+                            return external_id
+                except Exception as e:
+                    logger.debug("Could not get external IDs via store: %s", e)
+
+            return None
+        except Exception as e:
+            logger.warning("Failed to retrieve original localpart for '%s': %s",
+                          mapped_localpart, e)
+            return None
+
+    async def _find_user_by_original_localpart(self, original_localpart: str) -> Optional[str]:
+        """Find existing user by original LDAP localpart.
+
+        Uses Synapse's internal store to efficiently find user by external ID.
+
+        Args:
+            original_localpart: Original LDAP localpart (e.g., '790159')
+
+        Returns:
+            Full Matrix user ID if found, None otherwise
+        """
+        try:
+            auth_provider_id = "ldap_original"
+
+            # Try to access the internal store through ModuleApi
+            if hasattr(self.account_handler, '_store'):
+                store = self.account_handler._store
+
+                # Implement our own get_user_by_external_id using SQL query
+                try:
+                    # Use the internal db_pool to query user_external_ids table
+                    result = await store.db_pool.simple_select_one_onecol(
+                        table="user_external_ids",
+                        keyvalues={
+                            "auth_provider": auth_provider_id,
+                            "external_id": original_localpart,
+                        },
+                        retcol="user_id",
+                        allow_none=True,
+                        desc="get_user_by_external_id_ldap",
+                    )
+
+                    if result:
+                        logger.debug("Found user '%s' by original localpart '%s' using SQL query",
+                                    result, original_localpart)
+                        return result
+                except Exception as e:
+                    logger.debug("SQL query failed: %s", e)
+
+            logger.debug("No user found for original localpart '%s'", original_localpart)
+            return None
+
+        except Exception as e:
+            logger.debug("Error searching for user with original localpart '%s': %s",
+                        original_localpart, e)
+            return None
 
     @staticmethod
     def parse_config(config) -> "_LdapConfig":
