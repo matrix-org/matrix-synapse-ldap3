@@ -13,7 +13,7 @@ that offers more fully-featured integration.
 > next-gen Matrix auth server.
 >
 > To use Synapse and MAS together with an LDAP backend, it is recommended to use
-> [Dex](https://github.com/dexidp/dex) with MAS, instead of
+> [Dex](https://github.com/dexidp/dex) with [MAS](https://github.com/element-hq/matrix-authentication-service), instead of
 > `matrix-synapse-ldap3`. See [the relevant MAS
 > documentation](https://element-hq.github.io/matrix-authentication-service/setup/migration.html#map-any-upstream-sso-providers)
 > for information on configuring Dex in MAS.
