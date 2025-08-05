@@ -6,6 +6,18 @@ This allows users to log in to synapse with their username and password from an
 LDAP server. There is also [ma1sd](https://github.com/ma1uta/ma1sd) (3rd party)
 that offers more fully-featured integration.
 
+> [!WARNING]
+> Synapse's password provider plugin functionality (which this module relies on)
+> is not compatible with [Matrix Authentication
+> Service](https://github.com/element-hq/matrix-authentication-service) (MAS), the
+> next-gen Matrix auth server.
+>
+> To use Synapse and MAS together with an LDAP backend, it is recommended to use
+> [Dex](https://github.com/dexidp/dex) with MAS, instead of
+> `matrix-synapse-ldap3`. See [the relevant MAS
+> documentation](https://element-hq.github.io/matrix-authentication-service/setup/migration.html#map-any-upstream-sso-providers)
+> for information on configuring Dex in MAS.
+
 ## Installation
 
 - Included as standard in the [deb packages](https://matrix-org.github.io/synapse/latest/setup/installation.html#matrixorg-packages) and
