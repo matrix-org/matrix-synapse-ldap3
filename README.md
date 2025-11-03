@@ -221,31 +221,6 @@ or `login/domain`.
 Please note that `userPrincipalName` or a similar-looking LDAP attribute in the format
 `login@domain` must be used when the `active_directory` option is enabled.
 
-## Combining User Mapping with Active Directory
-
-User mapping can also be used with Active Directory forests:
-
-```yaml
-   modules:
-    - module: "ldap_auth_provider.LdapAuthProviderModule"
-      config:
-        enabled: true
-        mode: "search"
-        uri: "ldap://main.example.com:389"
-        base: "dc=example,dc=com"
-        active_directory: true
-        default_domain: main.example.com
-        attributes:
-           uid: "userPrincipalName"
-           mail: "mail"
-           name: "givenName"
-        bind_dn: "cn=hacker,ou=svcaccts,dc=example,dc=com"
-        bind_password: "ch33kym0nk3y"
-        # User mapping for AD usernames
-        user_mapping:
-          localpart_template: "ad_{localpart}"
-```
-
 ## Troubleshooting and Debugging
 
 `matrix-synapse-ldap3` logging is included in the Synapse homeserver log
