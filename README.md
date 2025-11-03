@@ -123,6 +123,7 @@ own file to not leak secrets into your configuration:
 
 Please note that every trailing `\n` in the password file will be stripped automatically.
 
+
 ## User Mapping
 
 The `user_mapping` option allows you to transform LDAP user identifiers into Matrix user identifiers
