@@ -253,12 +253,3 @@ Finally, restart your Synapse server for the changes to take effect:
 ```shell
 synctl restart
 ```
-
-## User Mapping Troubleshooting
-
-If users cannot log in after enabling user mapping:
-
-1. **Check logs**: Look for messages about user mapping in the LDAP debug logs
-2. **Verify template**: Ensure the `localpart_template` contains the `{localpart}` placeholder
-3. **Database**: If users previously logged in without mapping, they may have accounts under their original LDAP names. The system will try to find them by original localpart stored in `user_external_ids`
-4. **Username format**: Confirm that the transformed usernames are valid Matrix identifiers (lowercase, alphanumeric, dots, underscores, and hyphens only)
