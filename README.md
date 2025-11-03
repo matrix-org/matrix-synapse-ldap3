@@ -127,7 +127,8 @@ Please note that every trailing `\n` in the password file will be stripped autom
 
 The `user_mapping` option allows you to transform LDAP user identifiers into Matrix user identifiers
 using a customizable template. This is useful when you want to normalize or modify the local part
-of Matrix user IDs based on LDAP attributes.
+of user IDs based on LDAP attributes and when you have numeric IDs in LDAP because Synapse does not
+accept numeric usernames since they are reserved for the guest account.
 
 ### Configuration
 
@@ -156,7 +157,7 @@ When `user_mapping` is configured with a `localpart_template`:
 
 1. **LDAP Authentication**: User authenticates against LDAP with their original LDAP username
 2. **Template Application**: The LDAP username is transformed using the template
-   - Example: LDAP username `790159` + template `u{localpart}` → Matrix username `u790159`
+   - Example: LDAP username `123456 + template `u{localpart}` → Matrix username `u123456`
 3. **Matrix Registration/Login**: The user's Matrix account uses the transformed localpart
 4. **Storage**: The original LDAP localpart is stored in the `user_external_ids` table for future reference
 
@@ -173,28 +174,8 @@ user_mapping:
 ```yaml
 user_mapping:
   localpart_template: "u{localpart}"
-# LDAP user "790159" → Matrix user "@u790159:example.com"
+# LDAP user "123456" → Matrix user "@u123456:example.com"
 ```
-
-**Scenario 3: No transformation (identity mapping)**
-```yaml
-user_mapping:
-  localpart_template: "{localpart}"
-# LDAP user "alice" → Matrix user "@alice:example.com"
-```
-
-### Benefits
-
-- **Namespace management**: Avoid conflicts between LDAP usernames and existing Matrix users
-- **Consistent naming**: Enforce consistent naming conventions across your Matrix instance
-- **Legacy system support**: Accommodate existing LDAP directories with numeric or non-compliant identifiers
-
-### Important notes
-
-- The `localpart_template` must contain the placeholder `{localpart}`
-- The template uses Python string formatting, so ensure valid template syntax
-- Original LDAP localparts are stored automatically to support user lookups across sessions
-- When a user logs in, the system first checks if they already have a mapped account before creating a new one
 
 ## Active Directory forest support
 
