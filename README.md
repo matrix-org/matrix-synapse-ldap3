@@ -178,6 +178,27 @@ user_mapping:
 # LDAP user "123456" → Matrix user "@u123456:example.com"
 ```
 
+### Simple vs search mode, and attribute mapping
+
+The module behaves quite differently depending on the configured `mode`:
+
+- If `mode` is omitted (or set to `simple`), the module simply builds a DN from
+  `attributes.uid`, binds as the authenticating user, and stops there. No LDAP
+  search is performed, meaning `attributes.name` and `attributes.mail` are never
+  queried. When a Matrix user is created in this mode their display name is the
+  username they logged in with and their email address is left blank.
+- To fetch attribute values from LDAP you **must** run in `mode: search`. You can
+  optionally supply `bind_dn`/`bind_password` so the module performs the search
+  with a service account. If they are omitted, an anonymous bind is attempted
+  and succeeds only if your LDAP server allows anonymous reads.
+
+Also note that attribute data (`name`, `mail`) is fetched only when a Matrix
+user is created. During each authentication, the module re-checks LDAP
+credentials, but existing Matrix accounts keep the profile data stored in
+Synapse. Therefore logging in again will not refresh the display name or email
+address.
+
+
 ## Active Directory forest support
 
 If the ``active_directory`` flag is set to `true`, an Active Directory forest will be
