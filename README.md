@@ -123,6 +123,61 @@ own file to not leak secrets into your configuration:
 
 Please note that every trailing `\n` in the password file will be stripped automatically.
 
+
+## User Mapping
+
+The `user_mapping` option allows you to transform LDAP user identifiers into Matrix user identifiers
+using a customizable template. This is useful when you want to normalize or modify the local part
+of user IDs based on LDAP attributes and when you have numeric IDs in LDAP because Synapse does not
+accept numeric usernames since they are reserved for the guest account.
+
+### Configuration
+
+```yaml
+   modules:
+    - module: "ldap_auth_provider.LdapAuthProviderModule"
+      config:
+        enabled: true
+        uri: "ldap://ldap.example.com:389"
+        start_tls: true
+        base: "ou=users,dc=example,dc=com"
+        attributes:
+           uid: "cn"
+           mail: "mail"
+           name: "givenName"
+        bind_dn: "cn=hacker,ou=svcaccts,dc=example,dc=com"
+        bind_password: "ch33kym0nk3y"
+        # User mapping configuration
+        user_mapping:
+          localpart_template: "u{localpart}"
+```
+
+### How it works
+
+When `user_mapping` is configured with a `localpart_template`:
+
+1. **LDAP Authentication**: User authenticates against LDAP with their original LDAP username
+2. **Template Application**: The LDAP username is transformed using the template
+   - Example: LDAP username `123456 + template `u{localpart}` → Matrix username `u123456`
+3. **Matrix Registration/Login**: The user's Matrix account uses the transformed localpart
+4. **Storage**: The original LDAP localpart is stored in the `user_external_ids` table for future reference
+
+### Example scenarios
+
+**Scenario 1: Prefix usernames with department code**
+```yaml
+user_mapping:
+  localpart_template: "emp_{localpart}"
+# LDAP user "john.smith" → Matrix user "@emp_john.smith:example.com"
+```
+
+**Scenario 2: Prefix numeric employee IDs**
+```yaml
+user_mapping:
+  localpart_template: "u{localpart}"
+# LDAP user "123456" → Matrix user "@u123456:example.com"
+```
+
 ### Simple vs search mode, and attribute mapping
 
 The module behaves quite differently depending on the configured `mode`:
@@ -142,6 +197,7 @@ user is created. During each authentication, the module re-checks LDAP
 credentials, but existing Matrix accounts keep the profile data stored in
 Synapse. Therefore logging in again will not refresh the display name or email
 address.
+
 
 ## Active Directory forest support
 
