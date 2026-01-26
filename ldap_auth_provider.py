@@ -126,10 +126,63 @@ class LdapAuthProvider:
                           localpart_template, localpart, e)
             return localpart
 
+    def _reverse_template(self, mapped_localpart: str, template: str) -> Optional[str]:
+        """Reverse a template transformation to extract original localpart.
+
+        Args:
+            mapped_localpart: Mapped localpart (e.g., 'u790159')
+            template: Template used for mapping (e.g., 'u{localpart}')
+
+        Returns:
+            Original localpart if successfully reversed, None otherwise
+
+        Examples:
+            _reverse_template('u790159', 'u{localpart}') -> '790159'
+            _reverse_template('prefix_john_suffix', 'prefix_{localpart}_suffix') -> 'john'
+        """
+        if not template or "{localpart}" not in template:
+            return None
+
+        try:
+            # Split template by {localpart} placeholder
+            parts = template.split("{localpart}")
+            if len(parts) != 2:
+                logger.warning("Template '%s' has multiple {localpart} placeholders, cannot reverse", template)
+                return None
+
+            prefix, suffix = parts
+
+            # Check if mapped_localpart matches the pattern
+            if prefix and not mapped_localpart.startswith(prefix):
+                logger.debug("Mapped localpart '%s' doesn't start with prefix '%s'", mapped_localpart, prefix)
+                return None
+
+            if suffix and not mapped_localpart.endswith(suffix):
+                logger.debug("Mapped localpart '%s' doesn't end with suffix '%s'", mapped_localpart, suffix)
+                return None
+
+            # Extract the original localpart
+            start_idx = len(prefix)
+            end_idx = len(mapped_localpart) - len(suffix) if suffix else len(mapped_localpart)
+
+            if start_idx >= end_idx:
+                logger.debug("Cannot extract localpart from '%s' with template '%s'", mapped_localpart, template)
+                return None
+
+            original = mapped_localpart[start_idx:end_idx]
+            logger.debug("Extracted original localpart '%s' from '%s' using template '%s'",
+                        original, mapped_localpart, template)
+            return original
+
+        except Exception as e:
+            logger.warning("Failed to reverse template '%s' for '%s': %s", template, mapped_localpart, e)
+            return None
+
     async def _reverse_user_mapping(self, mapped_localpart: str) -> str:
         """Reverse user mapping to get original localpart for LDAP queries.
 
         Uses user_external_ids table to find the original LDAP localpart.
+        If not found in database, attempts to reverse the template transformation.
 
         Args:
             mapped_localpart: Mapped localpart (e.g., 'u790159')
@@ -151,7 +204,19 @@ class LdapAuthProvider:
             logger.warning("Failed to get original localpart from database for '%s': %s",
                           mapped_localpart, e)
 
-        # If not found in database, assume it's already the original
+        # If not found in database, try to reverse the template transformation
+        localpart_template = self.user_mapping.get("localpart_template")
+        if localpart_template:
+            try:
+                reversed = self._reverse_template(mapped_localpart, localpart_template)
+                if reversed:
+                    logger.debug("Reversed template '%s' -> '%s' for localpart '%s'",
+                                localpart_template, reversed, mapped_localpart)
+                    return reversed
+            except Exception as e:
+                logger.debug("Failed to reverse template for '%s': %s", mapped_localpart, e)
+
+        # If all else fails, assume it's already the original
         logger.debug("No original localpart found for '%s', assuming it's already original",
                     mapped_localpart)
         return mapped_localpart
@@ -519,25 +584,49 @@ class LdapAuthProvider:
 
             # Check if user exists
             if not await self.account_handler.check_user_exists(user_id):
+                logger.debug("User '%s' does not exist, cannot get original localpart", user_id)
                 return None
 
             # Get external IDs for this user via internal store
             auth_provider_id = "ldap_original"
 
             if hasattr(self.account_handler, '_store'):
+                store = self.account_handler._store
+
+                # Try using get_external_ids_by_user first
                 try:
-                    store = self.account_handler._store
                     external_ids = await store.get_external_ids_by_user(user_id)
 
                     # Look for our stored original localpart
                     for auth_provider, external_id in external_ids:
                         if auth_provider == auth_provider_id:
-                            logger.debug("Found original localpart '%s' for mapped localpart '%s'",
+                            logger.debug("Found original localpart '%s' for mapped localpart '%s' via get_external_ids_by_user",
                                         external_id, mapped_localpart)
                             return external_id
                 except Exception as e:
-                    logger.debug("Could not get external IDs via store: %s", e)
+                    logger.debug("Could not get external IDs via get_external_ids_by_user: %s", e)
 
+                # Fallback to direct SQL query
+                try:
+                    result = await store.db_pool.simple_select_one_onecol(
+                        table="user_external_ids",
+                        keyvalues={
+                            "user_id": user_id,
+                            "auth_provider": auth_provider_id,
+                        },
+                        retcol="external_id",
+                        allow_none=True,
+                        desc="get_original_localpart_ldap",
+                    )
+
+                    if result:
+                        logger.debug("Found original localpart '%s' for mapped localpart '%s' via SQL query",
+                                    result, mapped_localpart)
+                        return result
+                except Exception as e:
+                    logger.debug("SQL query failed for getting original localpart: %s", e)
+
+            logger.debug("No original localpart found for mapped localpart '%s'", mapped_localpart)
             return None
         except Exception as e:
             logger.warning("Failed to retrieve original localpart for '%s': %s",
@@ -863,7 +952,16 @@ class LdapAuthProvider:
                 )
 
             if self.ldap_filter:
-                query += self.ldap_filter
+                # If ldap_filter is already a complete filter (starts with '('), extract its content
+                # to avoid nested AND conditions like (&(uid=x)(&(objectClass=y)...))
+                ldap_filter_content = self.ldap_filter
+                if ldap_filter_content.startswith('(&') and ldap_filter_content.endswith(')'):
+                    # Extract content from (&...) - remove first 2 chars and last char
+                    ldap_filter_content = ldap_filter_content[2:-1]
+                elif ldap_filter_content.startswith('(') and ldap_filter_content.endswith(')'):
+                    # Single condition like (objectClass=person), keep as is
+                    pass
+                query += ldap_filter_content
 
             # Create an AND query
             query = "(&{query})".format(
