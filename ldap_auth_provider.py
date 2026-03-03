@@ -21,7 +21,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 import ldap3
 import ldap3.core.exceptions
 import synapse
-from pkg_resources import parse_version
+from packaging.version import parse as parse_version
 from synapse.module_api import ModuleApi
 from synapse.types import JsonDict
 from twisted.internet import threads
