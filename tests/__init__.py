@@ -1,5 +1,4 @@
-from asyncio.futures import Future
-from typing import Any, Awaitable, Type
+from typing import Type
 
 from ldaptor.inmemory import fromLDIFFile
 from ldaptor.interfaces import IConnectedLDAPEntry
@@ -188,17 +187,6 @@ def create_auth_provider(server, api, config=None):
         )
 
     return LdapAuthProviderModule(config, api=api)
-
-
-def make_awaitable(result: Any) -> Awaitable[Any]:
-    """
-    Makes an awaitable, suitable for mocking an `async` function.
-    This uses Futures as they can be awaited multiple times so can be returned
-    to multiple callers.
-    """
-    future = Future()
-    future.set_result(result)
-    return future
 
 
 def get_qualified_user_id(username):
