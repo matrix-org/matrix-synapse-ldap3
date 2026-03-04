@@ -19,12 +19,7 @@ from unittest.mock import Mock
 from twisted.internet import defer
 from twisted.trial import unittest
 
-from . import (
-    create_auth_provider,
-    create_ldap_server,
-    get_qualified_user_id,
-    make_awaitable,
-)
+from . import create_auth_provider, create_ldap_server, get_qualified_user_id
 
 logging.basicConfig()
 
@@ -40,7 +35,7 @@ class LdapSimpleTestCase(unittest.TestCase):
                 "register_password_auth_provider_callbacks",
             ]
         )
-        module_api.check_user_exists.side_effect = lambda user_id: make_awaitable(
+        module_api.check_user_exists.side_effect = lambda user_id: defer.succeed(
             user_id
         )
         module_api.get_qualified_user_id = get_qualified_user_id
@@ -109,7 +104,7 @@ class LdapSearchTestCase(unittest.TestCase):
                 "register_password_auth_provider_callbacks",
             ]
         )
-        module_api.check_user_exists.side_effect = lambda user_id: make_awaitable(
+        module_api.check_user_exists.side_effect = lambda user_id: defer.succeed(
             user_id
         )
         module_api.get_qualified_user_id = get_qualified_user_id
