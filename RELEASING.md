@@ -38,7 +38,7 @@ version. This repository uses [Semantic Versioning](https://semver.org/).
 1. Build and upload to PyPI:
    ```sh
    python -m build
-   twine upload dist/matrix-synapse-ldap3-$ver.tar.gz dist/matrix_synapse_ldap3-$ver-py3-none-any.whl
+   twine upload dist/matrix_synapse_ldap3-$ver.tar.gz dist/matrix_synapse_ldap3-$ver-py3-none-any.whl
    ```
 
 1. Create release on GH project page:
