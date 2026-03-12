@@ -127,9 +127,9 @@ Please note that every trailing `\n` in the password file will be stripped autom
 ## User Mapping
 
 The `user_mapping` option allows you to transform LDAP user identifiers into Matrix user identifiers
-using a customizable template. This is useful when you want to normalize or modify the local part
-of user IDs based on LDAP attributes and when you have numeric IDs in LDAP because Synapse does not
-accept numeric usernames since they are reserved for the guest account.
+using a customizable template. The template currently supports only the `{localpart}` placeholder,
+which is the local part derived from LDAP. This is useful, for example, when you have numeric IDs in
+LDAP, because Synapse does not accept purely numeric usernames since they are reserved for the guest account.
 
 ### Configuration
 
