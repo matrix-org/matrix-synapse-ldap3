@@ -319,8 +319,13 @@ class LdapAuthProvider:
 
             if existing_user_id:
                 # User exists with this original LDAP ID, return existing user
-                logger.debug("Found existing user '%s' for original localpart '%s'",
-                            existing_user_id, localpart)
+                logger.debug(
+                    "Found existing user '%s' for original localpart '%s'",
+                    existing_user_id,
+                    localpart,
+                )
+                if hasattr(conn, "unbind"):
+                    await threads.deferToThread(conn.unbind)
                 return existing_user_id
 
             # Get full user id from mapped localpart
