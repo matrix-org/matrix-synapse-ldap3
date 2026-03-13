@@ -188,7 +188,12 @@ class LdapAuthProvider:
             mapped_localpart: Mapped localpart (e.g., 'u790159')
 
         Returns:
-            Original localpart for LDAP queries (e.g., '790159')
+            The original localpart for LDAP queries (e.g., '790159'). If a mapping
+            was not found in the database, the current config is used to reverse
+            the mapping.
+            
+            If no `user_mapping` is configured, the given `mapped_localpart`
+            is returned directly.
         """
         if not self.user_mapping:
             return mapped_localpart
