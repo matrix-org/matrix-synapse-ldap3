@@ -216,14 +216,11 @@ class LdapAuthProvider:
         # If not found in database, try to reverse the template transformation
         localpart_template = self.user_mapping.get("localpart_template")
         if localpart_template:
-            try:
                 reversed = self._reverse_template(mapped_localpart, localpart_template)
                 if reversed:
                     logger.debug("Reversed template '%s' -> '%s' for localpart '%s'",
                                 localpart_template, reversed, mapped_localpart)
                     return reversed
-            except Exception as e:
-                logger.debug("Failed to reverse template for '%s': %s", mapped_localpart, e)
 
         # If all else fails, assume it's already the original
         logger.debug("No original localpart found for '%s', assuming it's already original",
