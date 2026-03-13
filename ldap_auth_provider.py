@@ -181,8 +181,8 @@ class LdapAuthProvider:
     async def _reverse_user_mapping(self, mapped_localpart: str) -> str:
         """Reverse user mapping to get original localpart for LDAP queries.
 
-        Uses user_external_ids table to find the original LDAP localpart.
-        If not found in database, attempts to reverse the template transformation.
+        This method searches the `user_external_ids` table to find the original LDAP
+        localpart. If not found, it attempts to reverse the template transformation.
 
         Args:
             mapped_localpart: Mapped localpart (e.g., 'u790159')
