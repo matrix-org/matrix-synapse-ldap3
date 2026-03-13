@@ -158,7 +158,7 @@ When `user_mapping` is configured with a `localpart_template`:
 
 1. **LDAP Authentication**: User authenticates against LDAP with their original LDAP username
 2. **Template Application**: The LDAP username is transformed using the template
-   - Example: LDAP username `123456` + template `u{localpart}` → Matrix username `u123456`
+   - Example: LDAP username `123456` + template `u{localpart}` → Matrix user `@u123456:domain.com`
 3. **Matrix Registration/Login**: The user's Matrix account uses the transformed localpart
 4. **Storage**: The original LDAP localpart is stored in the `user_external_ids` table for future reference
 
