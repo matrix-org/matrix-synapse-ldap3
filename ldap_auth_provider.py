@@ -143,41 +143,35 @@ class LdapAuthProvider:
         if not template or "{localpart}" not in template:
             return None
 
-        try:
-            # Split template by {localpart} placeholder
-            parts = template.split("{localpart}")
-            if len(parts) != 2:
-                logger.warning("Template '%s' has multiple {localpart} placeholders, cannot reverse", template)
-                return None
+        # Split template by {localpart} placeholder
+        # Note: Template is validated at config parse time to have exactly one {localpart}
+        parts = template.split("{localpart}")
+        assert len(parts) == 2, f"Template '{template}' should have exactly one {{localpart}} placeholder (validated at startup)"
 
-            prefix, suffix = parts
+        prefix, suffix = parts
 
-            # Check if mapped_localpart matches the pattern
-            if prefix and not mapped_localpart.startswith(prefix):
-                logger.debug("Mapped localpart '%s' doesn't start with prefix '%s'", mapped_localpart, prefix)
-                return None
-
-            if suffix and not mapped_localpart.endswith(suffix):
-                logger.debug("Mapped localpart '%s' doesn't end with suffix '%s'", mapped_localpart, suffix)
-                return None
-
-            # Extract the original localpart
-            start_idx = len(prefix)
-            end_idx = len(mapped_localpart) - len(suffix) if suffix else len(mapped_localpart)
-
-            if start_idx >= end_idx:
-                logger.debug("Cannot extract localpart from '%s' with template '%s'", mapped_localpart, template)
-                return None
-
-            original = mapped_localpart[start_idx:end_idx]
-            logger.debug("Extracted original localpart '%s' from '%s' using template '%s'",
-                        original, mapped_localpart, template)
-            return original
-
-        except Exception as e:
-            logger.warning("Failed to reverse template '%s' for '%s': %s", template, mapped_localpart, e)
+        # Check if mapped_localpart matches the pattern
+        if prefix and not mapped_localpart.startswith(prefix):
+            logger.debug("Mapped localpart '%s' doesn't start with prefix '%s'", mapped_localpart, prefix)
             return None
 
+        if suffix and not mapped_localpart.endswith(suffix):
+            logger.debug("Mapped localpart '%s' doesn't end with suffix '%s'", mapped_localpart, suffix)
+            return None
+
+        # Extract the original localpart
+        start_idx = len(prefix)
+        end_idx = len(mapped_localpart) - len(suffix) if suffix else len(mapped_localpart)
+
+        if start_idx >= end_idx:
+            logger.debug("Cannot extract localpart from '%s' with template '%s'", mapped_localpart, template)
+            return None
+
+        original = mapped_localpart[start_idx:end_idx]
+        logger.debug("Extracted original localpart '%s' from '%s' using template '%s'",
+                    original, mapped_localpart, template)
+        return original
+        
     async def _reverse_user_mapping(self, mapped_localpart: str) -> str:
         """Reverse user mapping to get original localpart for LDAP queries.
 
@@ -216,11 +210,11 @@ class LdapAuthProvider:
         # If not found in database, try to reverse the template transformation
         localpart_template = self.user_mapping.get("localpart_template")
         if localpart_template:
-                reversed = self._reverse_template(mapped_localpart, localpart_template)
-                if reversed:
-                    logger.debug("Reversed template '%s' -> '%s' for localpart '%s'",
-                                localpart_template, reversed, mapped_localpart)
-                    return reversed
+            reversed = self._reverse_template(mapped_localpart, localpart_template)
+            if reversed:
+                logger.debug("Reversed template '%s' -> '%s' for localpart '%s'",
+                            localpart_template, reversed, mapped_localpart)
+                return reversed
 
         # If all else fails, assume it's already the original
         logger.debug("No original localpart found for '%s', assuming it's already original",
@@ -760,12 +754,20 @@ class LdapAuthProvider:
                 raise ValueError("user_mapping must be a dictionary")
 
             localpart_template = user_mapping.get("localpart_template")
-            if localpart_template and not isinstance(localpart_template, str):
-                raise ValueError("localpart_template must be a string")
+            if localpart_template:
+                if not isinstance(localpart_template, str):
+                    raise ValueError("localpart_template must be a string")
 
-            # Validate template contains {localpart} placeholder
-            if localpart_template and "{localpart}" not in localpart_template:
-                raise ValueError("localpart_template must contain {localpart} placeholder")
+                # Validate template contains {localpart} placeholder
+                if "{localpart}" not in localpart_template:
+                    raise ValueError("localpart_template must contain {localpart} placeholder")
+
+                # Validate template contains exactly one {localpart} placeholder
+                if localpart_template.count("{localpart}") != 1:
+                    raise ValueError(
+                        "localpart_template must contain exactly one {localpart} placeholder, "
+                        f"found {localpart_template.count('{localpart}')}"
+                    )
 
             ldap_config.user_mapping = user_mapping
 
