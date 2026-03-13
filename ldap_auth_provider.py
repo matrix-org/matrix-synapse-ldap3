@@ -206,8 +206,12 @@ class LdapAuthProvider:
                             original_from_db, mapped_localpart)
                 return original_from_db
         except Exception as e:
-            logger.warning("Failed to get original localpart from database for '%s': %s",
-                          mapped_localpart, e)
+            logger.warning(
+                "Failed to get original localpart from database for '%s': %s."
+                " Falling back to applying the configured template in reverse",
+                mapped_localpart,
+                e,
+            )
 
         # If not found in database, try to reverse the template transformation
         localpart_template = self.user_mapping.get("localpart_template")
