@@ -171,7 +171,7 @@ class LdapAuthProvider:
         logger.debug("Extracted original localpart '%s' from '%s' using template '%s'",
                     original, mapped_localpart, template)
         return original
-        
+
     async def _reverse_user_mapping(self, mapped_localpart: str) -> str:
         """Reverse user mapping to get original localpart for LDAP queries.
 

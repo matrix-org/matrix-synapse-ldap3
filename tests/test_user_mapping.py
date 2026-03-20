@@ -99,7 +99,7 @@ class LdapUserMappingTestCase(unittest.TestCase):
                     for stored_provider, stored_external_id in self.user_external_ids[user_id]:
                         if stored_provider == auth_provider:
                             return stored_external_id
-                
+
                 # Also support lookup by external_id
                 external_id = keyvalues.get("external_id")
                 if external_id and auth_provider:
@@ -108,10 +108,10 @@ class LdapUserMappingTestCase(unittest.TestCase):
                             if stored_provider == auth_provider and stored_external_id == external_id:
                                 return uid
             return None
-        
+
         mock_db_pool.simple_select_one_onecol = AsyncMock(side_effect=mock_select_one_onecol)
         mock_store.db_pool = mock_db_pool
-        
+
         # Mock get_external_ids_by_user
         async def mock_get_external_ids_by_user(user_id):
             return self.user_external_ids.get(user_id, [])
@@ -119,7 +119,6 @@ class LdapUserMappingTestCase(unittest.TestCase):
         mock_store.get_external_ids_by_user = AsyncMock(side_effect=mock_get_external_ids_by_user)
 
         module_api._store = mock_store
-
 
         # Create auth provider with user_mapping configuration
         self.auth_provider = create_auth_provider(
