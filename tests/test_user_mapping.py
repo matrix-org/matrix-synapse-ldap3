@@ -23,24 +23,12 @@ from twisted.trial import unittest
 
 # Import test helpers from the tests package
 # These would be in tests/__init__.py
-try:
-    from . import (
-        create_auth_provider,
-        create_ldap_server,
-        get_qualified_user_id,
-        make_awaitable,
-    )
-except ImportError:
-    # For standalone testing
-    import sys
-    import os
-    sys.path.insert(0, os.path.dirname(__file__))
-    from __init__ import (
-        create_auth_provider,
-        create_ldap_server,
-        get_qualified_user_id,
-        make_awaitable,
-    )
+from . import (
+    create_auth_provider,
+    create_ldap_server,
+    get_qualified_user_id,
+    make_awaitable,
+)
 
 logging.basicConfig()
 
@@ -127,11 +115,12 @@ class LdapUserMappingTestCase(unittest.TestCase):
         # Mock get_external_ids_by_user
         async def mock_get_external_ids_by_user(user_id):
             return self.user_external_ids.get(user_id, [])
-        
+
         mock_store.get_external_ids_by_user = AsyncMock(side_effect=mock_get_external_ids_by_user)
-        
+
         module_api._store = mock_store
-        
+
+
         # Create auth provider with user_mapping configuration
         self.auth_provider = create_auth_provider(
             self.ldap_server,
@@ -425,4 +414,3 @@ class LdapUserMappingSearchModeTestCase(unittest.TestCase):
         )
 
         self.assertEqual(result, "@ubob:test")
-

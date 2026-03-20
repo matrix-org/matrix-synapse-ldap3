@@ -464,7 +464,7 @@ class LdapAuthProvider:
             logger.warning("Error during ldap authentication: %s", e)
             raise
 
-    async def register_user(self, localpart: str, name: str, email_address: str, already_mapped: bool = False, original_localpart: str = None) -> str:
+    async def register_user(self, localpart: str, name: str, email_address: str, already_mapped: bool = False, original_localpart: Optional[str] = None) -> str:
         """Register a Synapse user, first checking if they exist.
 
         Args:
