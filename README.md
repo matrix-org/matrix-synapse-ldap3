@@ -3,8 +3,7 @@
 Allows synapse to use LDAP as a password provider.
 
 This allows users to log in to synapse with their username and password from an
-LDAP server. There is also [ma1sd](https://github.com/ma1uta/ma1sd) (3rd party)
-that offers more fully-featured integration.
+LDAP server. 
 
 > [!WARNING]
 > Synapse's password provider plugin functionality (which this module relies on)
