@@ -19,6 +19,7 @@ jobs:
       - name: Set status
         env:
           GITHUB_TOKEN: ${{ secrets.ELEMENT_BOT_TOKEN }}
+          STEPS_ADD_PROJECT_OUTPUTS_ITEMID: ${{ steps.add_project.outputs.itemId }}
         run: |
           gh api graphql -f query='
           mutation(
@@ -41,4 +42,4 @@ jobs:
                 id
               }
             }
-          }' -f project="PVT_kwDOAIB0Bs4AFDdZ" -f item=${{ steps.add_project.outputs.itemId }} -f fieldid="PVTSSF_lADOAIB0Bs4AFDdZzgC6ZA4" -f columnid=ba22e43c --silent
+          }' -f project="PVT_kwDOAIB0Bs4AFDdZ" -f item=${STEPS_ADD_PROJECT_OUTPUTS_ITEMID} -f fieldid="PVTSSF_lADOAIB0Bs4AFDdZzgC6ZA4" -f columnid=ba22e43c --silent
