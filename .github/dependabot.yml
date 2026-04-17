@@ -1,0 +1,26 @@
+# This file is adapted from the same file in element-hq/synapse:
+# https://github.com/element-hq/synapse/blob/2e9b8202f0a1a8ceba9f02bb5ec227498d51dcbd/.github/dependabot.yml
+version: 2
+# As dependabot is currently only run on a weekly basis, we raise the
+# open-pull-requests-limit to 10 (from the default of 5) to better ensure we
+# don't continuously grow a backlog of updates.
+updates:
+  # Note: there locked python dependencies in this repo (yet!)
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    open-pull-requests-limit: 10
+    schedule:
+      interval: "weekly"
+    # Similarly for GitHub Actions, breaking changes are typically only introduced in major
+    # package bumps.
+    groups:
+      minor-and-patches:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    cooldown:
+      default-days: 14
