@@ -4,6 +4,10 @@ on:
   issues:
     types: [ labeled ]
 
+# No GITHUB_TOKEN permissions are needed here, as we supply our own token below
+# to complete the GraphQL calls and `gh` invocations.
+permissions: {}
+
 jobs:
   move_needs_info:
     name: Move X-Needs-Info on the triage board
